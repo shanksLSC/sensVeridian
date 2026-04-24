@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sensveridian"
+version = "0.1.0"
+description = "Ground-truth cache and distance-aware augmentation pipeline for vision model evaluation."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "typer>=0.12",
+  "rich>=13.0",
+  "duckdb>=1.0",
+  "redis>=5.0",
+  "numpy>=1.24",
+  "opencv-python-headless>=4.8",
+  "pillow>=10.0",
+  "pandas>=2.0",
+  "tensorflow>=2.12",
+  "torch>=2.2",
+  "torchvision>=0.17",
+  "transformers>=4.40",
+  "accelerate>=0.30",
+  "diffusers>=0.29",
+  "timm>=0.9",
+  "segment-anything>=1.0",
+  "simple-lama-inpainting>=0.1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6", "fakeredis>=2.0"]
+
+[project.scripts]
+sv = "sensveridian.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
