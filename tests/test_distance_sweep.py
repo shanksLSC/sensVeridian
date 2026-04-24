@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 
 from sensveridian.augmentation.distance_sweep import DistanceAugmentor
+from sensveridian.augmentation.camera import IMX219_PROFILE
 from sensveridian.augmentation.manual_distance import DistanceOverrides
 from sensveridian.hashing import hash_decoded_image
 from sensveridian.store.duck import SummaryRow
@@ -104,3 +105,38 @@ def test_distance_augmentor_zoe_fallback_and_auto_oracle(tmp_path: Path, duck_st
 
     ds = duck_store.query_df(f"select source from image_depth_stats where image_id='{image_id}'")
     assert "zoe" in set(ds["source"].tolist())
+
+
+def test_distance_augmentor_uses_camera_calibration_without_zoe(tmp_path: Path, duck_store, file_registry) -> None:
+    img_path = tmp_path / "img3.png"
+    _write_img(img_path)
+    image_id, _, _ = hash_decoded_image(img_path)
+    _seed_raw_for_image(duck_store, image_id, run_id="r3")
+
+    fake_orch = MagicMock()
+    aug = DistanceAugmentor(
+        store=duck_store,
+        orchestrator=fake_orch,
+        sam_checkpoint="/tmp/sam.pth",
+        device="cpu",
+        camera_profile=IMX219_PROFILE,
+    )
+    assert aug.depth is None
+    aug.segmenter.segment = MagicMock(return_value=[np.ones((64, 64), dtype=np.uint8)])
+    plate = np.zeros((64, 64, 3), dtype=np.uint8)
+    aug.inpainter.get_or_create_plate = MagicMock(return_value=(plate, str(tmp_path / "plate3.png"), "masksha3"))
+
+    steps = aug.augment_image(
+        image_path=img_path,
+        run_id="aug_calib",
+        d_max_ft=30.0,
+        step_ft=1.0,
+        source_models=["amod"],
+        out_dir=tmp_path / "out_calib",
+        auto_run_oracle=False,
+        overrides=DistanceOverrides.empty(),
+    )
+    assert steps > 0
+
+    ds = duck_store.query_df(f"select source from image_depth_stats where image_id='{image_id}'")
+    assert "calib" in set(ds["source"].tolist())

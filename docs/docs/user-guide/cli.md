@@ -130,6 +130,8 @@ sv augment distance <image_or_folder>
   [--auto-run-oracle]         Re-run oracles on generated images
   [--d0-ft FLOAT]             Manual initial distance (feet)
   [--d0-map PATH]             JSON file with per-image/per-detection overrides
+  [--camera TEXT]             Camera profile for calibration fallback (e.g. imx219)
+  [--camera-native WxH]       Override camera native mode (e.g. 1640x1232)
 ```
 
 ### Examples
@@ -155,6 +157,18 @@ sv augment distance /data3/ssharma8/all-models/Images/qr_code \
 sv augment distance /data3/ssharma8/all-models/Images \
   --d-max-ft 15 --step-ft 1 \
   --d0-map /path/to/d0_overrides.json \
+  --sam-checkpoint /data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
+
+# Camera-calibrated fallback (replaces ZoeDepth fallback)
+sv augment distance /data3/ssharma8/all-models/Images \
+  --d-max-ft 15 --step-ft 1 \
+  --camera imx219 \
+  --sam-checkpoint /data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
+
+# Camera-calibrated fallback with native mode override
+sv augment distance /data3/ssharma8/all-models/Images \
+  --d-max-ft 15 --step-ft 1 \
+  --camera imx219 --camera-native 1640x1232 \
   --sam-checkpoint /data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
 ```
 

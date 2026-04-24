@@ -86,7 +86,32 @@ When augmenting, distance lookup follows this priority:
 1. **Detection-specific override** (if present in `detections.<index>`)
 2. **Image-level default** (if present in `images.<image_id>.default_ft`)
 3. **Global override** (if `--d0-ft` flag provided)
-4. **ZoeDepth fallback** (if no manual override found)
+4. **Camera calibration** (if `--camera` is set; for example `--camera imx219`)
+5. **ZoeDepth fallback** (if no manual override and no camera profile)
+
+## Camera Calibration Integration
+
+You can enable camera-based distance estimation:
+
+```bash
+sv augment distance /path/to/images \
+  --camera imx219 \
+  --d-max-ft 15 --step-ft 1 \
+  --sam-checkpoint /data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
+```
+
+Optional native capture mode override:
+
+```bash
+sv augment distance /path/to/images \
+  --camera imx219 \
+  --camera-native 1640x1232 \
+  --d-max-ft 15 --step-ft 1 \
+  --sam-checkpoint /data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
+```
+
+With `--camera` enabled, ZoeDepth is skipped and the fallback path uses pinhole calibration with
+class priors or per-detection real size overrides.
 
 ## Building the Override JSON
 

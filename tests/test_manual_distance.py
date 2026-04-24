@@ -85,6 +85,7 @@ def test_from_json_round_trip(tmp_path: Path) -> None:
             "door_01.jpg": {
                 "default": 4.5,
                 "detections": {"amod:0": 4.1, "fd:0": 4.8},
+                "real_sizes_m": {"amod:0": {"h": 1.7, "w": 0.45}},
             }
         },
     }
@@ -97,6 +98,34 @@ def test_from_json_round_trip(tmp_path: Path) -> None:
     assert io.default == 4.5
     assert io.detections["amod:0"] == 4.1
     assert io.detections["fd:0"] == 4.8
+    assert io.real_sizes_m["amod:0"] == (1.7, 0.45)
+
+
+def test_real_size_lookup(tmp_path: Path) -> None:
+    p = tmp_path / "foo.jpg"
+    o = DistanceOverrides(
+        images={
+            "foo.jpg": ImageOverride(
+                default=6.0,
+                real_sizes_m={"amod:0": (1.7, 0.45)},
+            )
+        }
+    )
+    assert o.real_size_lookup(
+        image_path=p,
+        image_id="abc",
+        model_id="amod",
+        detection_idx=0,
+    ) == (1.7, 0.45)
+    assert (
+        o.real_size_lookup(
+            image_path=p,
+            image_id="abc",
+            model_id="amod",
+            detection_idx=1,
+        )
+        is None
+    )
 
 
 def test_covers_all(tmp_path: Path) -> None:
