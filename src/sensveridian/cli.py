@@ -13,6 +13,7 @@ from .store.faces_registry import FaceRegistry
 from .seed_faces import seed_dummy_faces
 from .orchestrator import Orchestrator
 from .augmentation.distance_sweep import DistanceAugmentor
+from .augmentation.camera import get_camera_profile
 from .augmentation.manual_distance import DistanceOverrides
 
 
@@ -146,6 +147,16 @@ def augment_distance(
     run_id: str = typer.Option("augmented", help="Run id used if auto oracle run is enabled."),
     auto_run_oracle: bool = typer.Option(False, help="Run oracle models on generated images."),
     sam_checkpoint: Path = typer.Option(..., help="Path to SAM checkpoint .pth"),
+    camera: Optional[str] = typer.Option(
+        None,
+        "--camera",
+        help="Camera profile for calibration-based distance estimation (for example: imx219). Replaces ZoeDepth fallback when set.",
+    ),
+    camera_native: Optional[str] = typer.Option(
+        None,
+        "--camera-native",
+        help="Override camera native resolution as WxH (for example: 1640x1232).",
+    ),
     d0_ft: Optional[float] = typer.Option(
         None,
         "--d0-ft",
@@ -162,7 +173,25 @@ def augment_distance(
     try:
         reg = _registry()
         orch = Orchestrator(store=s, registry=reg)
-        aug = DistanceAugmentor(store=s, orchestrator=orch, sam_checkpoint=str(sam_checkpoint), device=SETTINGS.device)
+        camera_profile = None
+        if camera is not None:
+            camera_profile = get_camera_profile(camera)
+            if camera_native:
+                try:
+                    native_w, native_h = [int(x.strip()) for x in camera_native.lower().split("x", 1)]
+                except Exception as exc:  # pragma: no cover - argument validation path
+                    raise typer.BadParameter("--camera-native must be in WxH format, for example 1640x1232") from exc
+                if native_w <= 0 or native_h <= 0:
+                    raise typer.BadParameter("--camera-native dimensions must be positive integers")
+                camera_profile = camera_profile.with_native_resolution(native_w_px=native_w, native_h_px=native_h)
+
+        aug = DistanceAugmentor(
+            store=s,
+            orchestrator=orch,
+            sam_checkpoint=str(sam_checkpoint),
+            device=SETTINGS.device,
+            camera_profile=camera_profile,
+        )
         roots = [image_or_folder] if image_or_folder.is_file() else sorted([p for p in image_or_folder.rglob("*") if p.is_file()])
         out_root = SETTINGS.cache_dir / "augmentations" / f"{run_id}_{uuid.uuid4().hex[:8]}"
         total = 0
@@ -180,6 +209,10 @@ def augment_distance(
         console.print(
             f"Manual distance: global_ft={overrides.global_ft}, image_entries={len(overrides.images)}"
         )
+        if camera_profile is not None:
+            console.print(
+                f"Camera calibration enabled: {camera_profile.name} ({camera_profile.native_w_px}x{camera_profile.native_h_px})"
+            )
 
         for p in roots:
             if p.suffix.lower() not in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}:

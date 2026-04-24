@@ -42,6 +42,7 @@ import json
 class ImageOverride:
     default: Optional[float] = None
     detections: dict[str, float] = field(default_factory=dict)
+    real_sizes_m: dict[str, tuple[float, float]] = field(default_factory=dict)
 
 
 @dataclass
@@ -64,9 +65,20 @@ class DistanceOverrides:
                 continue
             default = payload.get("default")
             dets = payload.get("detections", {}) or {}
+            real_sizes_raw = payload.get("real_sizes_m", {}) or {}
+            real_sizes_m: dict[str, tuple[float, float]] = {}
+            for det_key, size in real_sizes_raw.items():
+                if not isinstance(size, dict):
+                    continue
+                h = size.get("h")
+                w = size.get("w")
+                if h is None or w is None:
+                    continue
+                real_sizes_m[str(det_key)] = (float(h), float(w))
             images[str(key)] = ImageOverride(
                 default=float(default) if default is not None else None,
                 detections={str(k): float(v) for k, v in dets.items()},
+                real_sizes_m=real_sizes_m,
             )
         return cls(
             global_ft=float(global_ft) if global_ft is not None else None,
@@ -102,6 +114,21 @@ class DistanceOverrides:
         if self.global_ft is not None:
             return self.global_ft
         return None
+
+    def real_size_lookup(
+        self,
+        *,
+        image_path: Path,
+        image_id: str,
+        model_id: str,
+        detection_idx: int,
+    ) -> Optional[tuple[float, float]]:
+        """Return per-detection real size in meters (h, w), or ``None``."""
+        img_over = self._image_override(image_path, image_id)
+        if img_over is None:
+            return None
+        key = f"{model_id}:{detection_idx}"
+        return img_over.real_sizes_m.get(key)
 
     def covers_all(
         self,
