@@ -8,6 +8,8 @@ accidentally fall back again with stale data.
 Usage:
     /data3/ssharma8/py310/bin/python \
         /data3/ssharma8/projects/lattice-internal/sensVeridian/scripts/migrate_faces_to_redis.py
+
+Dummy Check-in for testing purposes.
 """
 
 from __future__ import annotations
