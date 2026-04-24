@@ -4,6 +4,8 @@ site_url: https://shanksLSC.github.io/sensVeridian/
 repo_url: https://github.com/shanksLSC/sensVeridian
 repo_name: shanksLSC/sensVeridian
 edit_uri: edit/main/docs/docs/
+docs_dir: docs/docs
+site_dir: site
 
 theme:
   name: material
@@ -32,7 +34,6 @@ theme:
 
 plugins:
   - search
-  - minify
 
 markdown_extensions:
   - pymdownx.emoji
