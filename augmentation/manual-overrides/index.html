@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://shanksLSC.github.io/sensVeridian/augmentation/manual-overrides/">
       
       
-        <link rel="prev" href="../distance-sweep/">
+        <link rel="prev" href="../calibration/">
       
       
         <link rel="next" href="../../operations/environment/">
@@ -837,6 +837,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../calibration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Camera Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -965,6 +993,17 @@
     <span class="md-ellipsis">
       
         Precedence Order
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#camera-calibration-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Camera Calibration Integration
       
     </span>
   </a>
@@ -1325,6 +1364,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#camera-calibration-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Camera Calibration Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#building-the-override-json" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1483,8 +1533,25 @@
 <li><strong>Detection-specific override</strong> (if present in <code>detections.&lt;index&gt;</code>)</li>
 <li><strong>Image-level default</strong> (if present in <code>images.&lt;image_id&gt;.default_ft</code>)</li>
 <li><strong>Global override</strong> (if <code>--d0-ft</code> flag provided)</li>
-<li><strong>ZoeDepth fallback</strong> (if no manual override found)</li>
+<li><strong>Camera calibration</strong> (if <code>--camera</code> is set; for example <code>--camera imx219</code>)</li>
+<li><strong>ZoeDepth fallback</strong> (if no manual override and no camera profile)</li>
 </ol>
+<h2 id="camera-calibration-integration">Camera Calibration Integration</h2>
+<p>You can enable camera-based distance estimation:</p>
+<div class="highlight"><pre><span></span><code>sv<span class="w"> </span>augment<span class="w"> </span>distance<span class="w"> </span>/path/to/images<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--camera<span class="w"> </span>imx219<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--d-max-ft<span class="w"> </span><span class="m">15</span><span class="w"> </span>--step-ft<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sam-checkpoint<span class="w"> </span>/data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
+</code></pre></div>
+<p>Optional native capture mode override:</p>
+<div class="highlight"><pre><span></span><code>sv<span class="w"> </span>augment<span class="w"> </span>distance<span class="w"> </span>/path/to/images<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--camera<span class="w"> </span>imx219<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--camera-native<span class="w"> </span>1640x1232<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--d-max-ft<span class="w"> </span><span class="m">15</span><span class="w"> </span>--step-ft<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sam-checkpoint<span class="w"> </span>/data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
+</code></pre></div>
+<p>With <code>--camera</code> enabled, ZoeDepth is skipped and the fallback path uses pinhole calibration with
+class priors or per-detection real size overrides.</p>
 <h2 id="building-the-override-json">Building the Override JSON</h2>
 <h3 id="option-a-generate-from-metadata">Option A: Generate from metadata</h3>
 <p>If you have a CSV with image IDs and distances:</p>

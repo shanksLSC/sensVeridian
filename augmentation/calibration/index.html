@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://shanksLSC.github.io/sensVeridian/redis/config/">
+        <link rel="canonical" href="https://shanksLSC.github.io/sensVeridian/augmentation/calibration/">
       
       
-        <link rel="prev" href="../management/">
+        <link rel="prev" href="../distance-sweep/">
       
       
-        <link rel="next" href="../../augmentation/distance-sweep/">
+        <link rel="next" href="../manual-overrides/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Configuration - sensVeridian</title>
+        <title>Camera Calibration - sensVeridian</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#configuration" class="md-skip">
+        <a href="#camera-calibration-distance-estimation" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Configuration
+              Camera Calibration
             
           </span>
         </div>
@@ -620,20 +620,20 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -654,7 +654,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -672,7 +672,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overview/" class="md-nav__link">
+      <a href="../../redis/overview/" class="md-nav__link">
         
   
   
@@ -700,7 +700,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../management/" class="md-nav__link">
+      <a href="../../redis/management/" class="md-nav__link">
         
   
   
@@ -708,6 +708,118 @@
     
   
     Server Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../redis/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Augmentation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Augmentation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../distance-sweep/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distance Sweep
   
 
     
@@ -744,7 +856,7 @@
   <span class="md-ellipsis">
     
   
-    Configuration
+    Camera Calibration
   
 
     
@@ -762,7 +874,7 @@
   <span class="md-ellipsis">
     
   
-    Configuration
+    Camera Calibration
   
 
     
@@ -788,49 +900,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#file-srcsensveridianconfigpy" class="md-nav__link">
+  <a href="#formula" class="md-nav__link">
     <span class="md-ellipsis">
       
-        File: src/sensveridian/config.py
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="File: src/sensveridian/config.py">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#modelpaths" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ModelPaths
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#settings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Settings
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#distance-augmentation-tuning" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Distance Augmentation Tuning
+        Formula
       
     </span>
   </a>
@@ -838,10 +911,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#detection-thresholds" class="md-nav__link">
+  <a href="#built-in-sony-imx219-profile" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Detection Thresholds
+        Built-in Sony IMX219 Profile
       
     </span>
   </a>
@@ -849,10 +922,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#face-registry-settings" class="md-nav__link">
+  <a href="#cli-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Face Registry Settings
+        CLI Usage
       
     </span>
   </a>
@@ -860,10 +933,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#cli-defaults" class="md-nav__link">
+  <a href="#size-priors-defaults" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CLI Defaults
+        Size Priors (Defaults)
       
     </span>
   </a>
@@ -871,10 +944,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#logging" class="md-nav__link">
+  <a href="#per-detection-real-size-override" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Logging
+        Per-Detection Real Size Override
       
     </span>
   </a>
@@ -882,10 +955,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#testing-configuration" class="md-nav__link">
+  <a href="#adding-a-new-camera" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Testing Configuration
+        Adding a New Camera
       
     </span>
   </a>
@@ -901,62 +974,6 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Augmentation
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Augmentation
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
               
                 
   
@@ -964,63 +981,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../augmentation/distance-sweep/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Distance Sweep
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../augmentation/calibration/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Camera Calibration
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../augmentation/manual-overrides/" class="md-nav__link">
+      <a href="../manual-overrides/" class="md-nav__link">
         
   
   
@@ -1242,49 +1203,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#file-srcsensveridianconfigpy" class="md-nav__link">
+  <a href="#formula" class="md-nav__link">
     <span class="md-ellipsis">
       
-        File: src/sensveridian/config.py
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="File: src/sensveridian/config.py">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#modelpaths" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ModelPaths
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#settings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Settings
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#distance-augmentation-tuning" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Distance Augmentation Tuning
+        Formula
       
     </span>
   </a>
@@ -1292,10 +1214,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#detection-thresholds" class="md-nav__link">
+  <a href="#built-in-sony-imx219-profile" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Detection Thresholds
+        Built-in Sony IMX219 Profile
       
     </span>
   </a>
@@ -1303,10 +1225,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#face-registry-settings" class="md-nav__link">
+  <a href="#cli-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Face Registry Settings
+        CLI Usage
       
     </span>
   </a>
@@ -1314,10 +1236,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#cli-defaults" class="md-nav__link">
+  <a href="#size-priors-defaults" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CLI Defaults
+        Size Priors (Defaults)
       
     </span>
   </a>
@@ -1325,10 +1247,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#logging" class="md-nav__link">
+  <a href="#per-detection-real-size-override" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Logging
+        Per-Detection Real Size Override
       
     </span>
   </a>
@@ -1336,10 +1258,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#testing-configuration" class="md-nav__link">
+  <a href="#adding-a-new-camera" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Testing Configuration
+        Adding a New Camera
       
     </span>
   </a>
@@ -1366,225 +1288,153 @@
   
 
 
-<h1 id="configuration">Configuration</h1>
-<p>Reference guide for sensVeridian configuration options, both environment variables and hardcoded defaults.</p>
-<h2 id="file-srcsensveridianconfigpy">File: <code>src/sensveridian/config.py</code></h2>
-<h3 id="modelpaths">ModelPaths</h3>
-<p>Paths to the four oracle models (<code>.h5</code> files).</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ModelPaths</span><span class="p">:</span>
-    <span class="n">amod</span> <span class="o">=</span> <span class="s2">&quot;/data3/ssharma8/all-models/AutomotiveMultiObjectDetection/amod-cpnx-8.2.0.h5&quot;</span>
-    <span class="n">qrcode</span> <span class="o">=</span> <span class="s2">&quot;/data3/ssharma8/all-models/QRCode/qr-code-detection-final.h5&quot;</span>
-    <span class="n">fd</span> <span class="o">=</span> <span class="s2">&quot;/data3/ssharma8/all-models/FaceDetection/fd_lnd_hp-fpga-8.1.0.h5&quot;</span>
-    <span class="n">fr</span> <span class="o">=</span> <span class="s2">&quot;/data3/ssharma8/all-models/FaceRecognition/fr-fpga-8.1.1.h5&quot;</span>
-</code></pre></div>
-<p>To override at runtime, edit <code>src/sensveridian/config.py</code> or patch via Python:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">sensveridian</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
-<span class="n">config</span><span class="o">.</span><span class="n">ModelPaths</span><span class="o">.</span><span class="n">amod</span> <span class="o">=</span> <span class="s2">&quot;/custom/path/to/amod.h5&quot;</span>
-</code></pre></div>
-<h3 id="settings">Settings</h3>
-<p>Global configuration dataclass.</p>
+<h1 id="camera-calibration-distance-estimation">Camera Calibration Distance Estimation</h1>
+<p>Camera calibration mode uses a pinhole-camera estimate instead of ZoeDepth for unresolved detections.
+It is useful when you know the camera profile (for example Sony IMX219) and want deterministic, fast
+distance initialization without loading a depth model.</p>
+<h2 id="formula">Formula</h2>
+<p>For a pinhole camera:</p>
+<p><code>distance_m = (real_size_m * f_px) / bbox_size_px</code></p>
+<ul>
+<li><code>real_size_m</code>: object real-world height/width in meters</li>
+<li><code>f_px</code>: focal length in pixels at the current image resolution</li>
+<li><code>bbox_size_px</code>: detection box size in pixels (height preferred, width fallback)</li>
+</ul>
+<p>sensVeridian converts meters to feet with:</p>
+<p><code>distance_ft = distance_m * 3.28084</code></p>
+<h2 id="built-in-sony-imx219-profile">Built-in Sony IMX219 Profile</h2>
 <table>
 <thead>
 <tr>
 <th>Field</th>
-<th>Type</th>
-<th>Default</th>
-<th>Purpose</th>
+<th>Value</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>db_path</code></td>
-<td>str</td>
-<td><code>./sensveridian.duckdb</code></td>
-<td>DuckDB file path</td>
+<td>Camera name</td>
+<td><code>imx219</code></td>
 </tr>
 <tr>
-<td><code>redis_url</code></td>
-<td>str</td>
-<td><code>redis://localhost:6379/0</code></td>
-<td>Redis connection string</td>
+<td>Focal length</td>
+<td><code>3.04 mm</code></td>
 </tr>
 <tr>
-<td><code>cache_dir</code></td>
-<td>str</td>
-<td><code>./cache</code></td>
-<td>Cache directory (augmentations, depth maps, etc.)</td>
+<td>Sensor size</td>
+<td><code>3.68 x 2.76 mm</code></td>
 </tr>
 <tr>
-<td><code>face_registry_fallback</code></td>
-<td>str</td>
-<td><code>./cache/faces_registry.json</code></td>
-<td>File fallback if Redis down</td>
+<td>Native resolution</td>
+<td><code>3280 x 2464</code></td>
 </tr>
 <tr>
-<td><code>depth_estimation_default</code></td>
-<td>float</td>
-<td><code>5.0</code></td>
-<td>Default distance in feet if no ZoeDepth/override</td>
+<td>Pixel pitch</td>
+<td><code>1.12 um</code></td>
 </tr>
 <tr>
-<td><code>max_workers</code></td>
-<td>int</td>
-<td><code>4</code></td>
-<td>Thread pool size for parallel ops</td>
+<td>Native <code>fx</code>, <code>fy</code></td>
+<td><code>~2710.87 px</code></td>
 </tr>
 </tbody>
 </table>
-<p><strong>Override via environment</strong>:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">SV_DB_PATH</span><span class="o">=</span>/mnt/data/sensveridian.duckdb
-<span class="nb">export</span><span class="w"> </span><span class="nv">SV_REDIS_URL</span><span class="o">=</span>redis://localhost:6380/0
-sv<span class="w"> </span>stats<span class="w">  </span><span class="c1"># Uses new paths</span>
+<p>For different capture resolutions, <code>fx/fy</code> are scaled from native dimensions.</p>
+<h2 id="cli-usage">CLI Usage</h2>
+<div class="highlight"><pre><span></span><code>sv<span class="w"> </span>augment<span class="w"> </span>distance<span class="w"> </span>/path/to/images<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--d-max-ft<span class="w"> </span><span class="m">15</span><span class="w"> </span>--step-ft<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--camera<span class="w"> </span>imx219<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sam-checkpoint<span class="w"> </span>/data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
 </code></pre></div>
-<p><strong>Or in Python</strong>:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">sensveridian.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">SETTINGS</span>
-<span class="n">SETTINGS</span><span class="o">.</span><span class="n">db_path</span> <span class="o">=</span> <span class="s2">&quot;/custom/db.duckdb&quot;</span>
-<span class="n">SETTINGS</span><span class="o">.</span><span class="n">redis_url</span> <span class="o">=</span> <span class="s2">&quot;redis://remote:6379/0&quot;</span>
+<p>Optional native mode override:</p>
+<div class="highlight"><pre><span></span><code>sv<span class="w"> </span>augment<span class="w"> </span>distance<span class="w"> </span>/path/to/images<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--d-max-ft<span class="w"> </span><span class="m">15</span><span class="w"> </span>--step-ft<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--camera<span class="w"> </span>imx219<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--camera-native<span class="w"> </span>1640x1232<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sam-checkpoint<span class="w"> </span>/data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
 </code></pre></div>
-<h2 id="distance-augmentation-tuning">Distance Augmentation Tuning</h2>
-<p>In <code>src/sensveridian/augmentation/distance_sweep.py</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Defaults for geometric scaling</span>
-<span class="n">DEFAULT_DOF_BLUR_STRENGTH</span> <span class="o">=</span> <span class="mf">0.5</span>  <span class="c1"># Blur amount (0-1)</span>
-<span class="n">DEFAULT_HAZE_STRENGTH</span> <span class="o">=</span> <span class="mf">0.3</span>      <span class="c1"># Atmospheric haze (0-1)</span>
-
-<span class="c1"># Object sizing constraints</span>
-<span class="n">MIN_OBJECT_SIZE_PX</span> <span class="o">=</span> <span class="mi">10</span>          <span class="c1"># Don&#39;t scale below this</span>
-<span class="n">MAX_OBJECT_SIZE_PX</span> <span class="o">=</span> <span class="mi">2000</span>        <span class="c1"># Don&#39;t scale above this</span>
-</code></pre></div>
-<p>To customize, edit the file or patch at runtime:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">sensveridian.augmentation.distance_sweep</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ds</span>
-<span class="n">ds</span><span class="o">.</span><span class="n">DEFAULT_DOF_BLUR_STRENGTH</span> <span class="o">=</span> <span class="mf">0.8</span>
-</code></pre></div>
-<h2 id="detection-thresholds">Detection Thresholds</h2>
-<p>Oracle model confidence thresholds (in respective runners):</p>
+<p>When <code>--camera</code> is set:</p>
+<ul>
+<li>Manual overrides still take precedence</li>
+<li>Calibration is used for unresolved detections</li>
+<li>ZoeDepth is not loaded</li>
+</ul>
+<h2 id="size-priors-defaults">Size Priors (Defaults)</h2>
+<p>Calibration needs real object size. sensVeridian supports:</p>
+<ol>
+<li>Class priors (default)</li>
+<li>Per-detection size override in <code>--d0-map</code></li>
+</ol>
+<p>Default class priors:</p>
 <table>
 <thead>
 <tr>
-<th>Model</th>
-<th>Threshold</th>
-<th>File</th>
+<th>Model/Class</th>
+<th style="text-align: right;">Height (m)</th>
+<th style="text-align: right;">Width (m)</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>AMOD</td>
-<td>0.4</td>
-<td><code>src/sensveridian/runners/amod.py</code></td>
+<td><code>fd:0</code> (face)</td>
+<td style="text-align: right;">0.22</td>
+<td style="text-align: right;">0.16</td>
 </tr>
 <tr>
-<td>QRCode</td>
-<td>(N/A, decoded)</td>
-<td><code>src/sensveridian/runners/qrcode.py</code></td>
+<td><code>qrcode:0</code></td>
+<td style="text-align: right;">0.10</td>
+<td style="text-align: right;">0.10</td>
 </tr>
 <tr>
-<td>FD</td>
-<td>0.5</td>
-<td><code>src/sensveridian/runners/face_detection.py</code></td>
+<td><code>amod:0</code> (person)</td>
+<td style="text-align: right;">1.70</td>
+<td style="text-align: right;">0.45</td>
 </tr>
 <tr>
-<td>FR</td>
-<td>0.6 (cosine)</td>
-<td><code>src/sensveridian/runners/face_recognition.py</code></td>
+<td><code>amod:1</code> (car)</td>
+<td style="text-align: right;">1.45</td>
+<td style="text-align: right;">1.80</td>
+</tr>
+<tr>
+<td><code>amod:2</code> (motorcycle)</td>
+<td style="text-align: right;">1.10</td>
+<td style="text-align: right;">0.75</td>
+</tr>
+<tr>
+<td><code>amod:3</code> (bicycle)</td>
+<td style="text-align: right;">1.20</td>
+<td style="text-align: right;">0.50</td>
 </tr>
 </tbody>
 </table>
-<p>Adjust thresholds to trade recall for precision:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># In amod.py</span>
-<span class="n">CONFIDENCE_THRESHOLD</span> <span class="o">=</span> <span class="mf">0.5</span>  <span class="c1"># Default 0.4; raise to 0.5 for fewer false positives</span>
+<h2 id="per-detection-real-size-override">Per-Detection Real Size Override</h2>
+<p>Add <code>real_sizes_m</code> in the same image override block used by <code>--d0-map</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;global_ft&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;images&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;door_01.jpg&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.2</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;detections&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;amod:0&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">4.5</span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;real_sizes_m&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;amod:0&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;h&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.78</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;w&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.48</span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;qrcode:0&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;h&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.15</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;w&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.15</span><span class="p">}</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
 </code></pre></div>
-<h2 id="face-registry-settings">Face Registry Settings</h2>
-<p>In <code>src/sensveridian/store/faces_registry.py</code>:</p>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Default</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>EMBEDDING_NORM</code></td>
-<td><code>L2</code></td>
-<td>Normalization for face embeddings</td>
-</tr>
-<tr>
-<td><code>MATCH_THRESHOLD</code></td>
-<td><code>0.6</code></td>
-<td>Cosine similarity threshold for match</td>
-</tr>
-<tr>
-<td><code>REDIS_KEY_PREFIX</code></td>
-<td><code>face:</code></td>
-<td>Redis key namespace</td>
-</tr>
-</tbody>
-</table>
-<h2 id="cli-defaults">CLI Defaults</h2>
-<p>In <code>src/sensveridian/cli.py</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">ingest</span><span class="p">(</span>
-    <span class="n">image_root</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;baseline&quot;</span><span class="p">,</span>
-    <span class="n">models</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;amod,qrcode,fd,fr&quot;</span><span class="p">,</span>  <span class="c1"># &lt;- Default models</span>
-    <span class="n">skip_existing</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>          <span class="c1"># &lt;- Default behavior</span>
-<span class="p">):</span>
-    <span class="o">...</span>
-
-<span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">augment_distance</span><span class="p">(</span>
-    <span class="n">image_root</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">d_max_ft</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
-    <span class="n">step_ft</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
-    <span class="n">source_models</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;amod,fd,qrcode&quot;</span><span class="p">,</span>  <span class="c1"># &lt;- Default sources</span>
-    <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;augmented&quot;</span><span class="p">,</span>               <span class="c1"># &lt;- Default run tag</span>
-    <span class="n">auto_run_oracle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>           <span class="c1"># &lt;- Default: no re-run</span>
-<span class="p">):</span>
-    <span class="o">...</span>
-</code></pre></div>
-<p>To change defaults, edit <code>cli.py</code> or pass explicit flags:</p>
-<div class="highlight"><pre><span></span><code>sv<span class="w"> </span>ingest<span class="w"> </span>/path<span class="w"> </span>--models<span class="w"> </span>amod<span class="w"> </span>--skip-existing<span class="w"> </span>False
-</code></pre></div>
-<h2 id="logging">Logging</h2>
-<p>Set <code>LOGLEVEL</code> to control verbosity:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">LOGLEVEL</span><span class="o">=</span>DEBUG
-sv<span class="w"> </span>ingest<span class="w"> </span>/path<span class="w"> </span>--run-id<span class="w"> </span><span class="nb">test</span>
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Level</th>
-<th>Used for</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>DEBUG</code></td>
-<td>Detailed traces (model loading, inpainting steps)</td>
-</tr>
-<tr>
-<td><code>INFO</code></td>
-<td>Status messages (images processed, rows inserted)</td>
-</tr>
-<tr>
-<td><code>WARNING</code></td>
-<td>Recoverable issues (model fallback, Redis down)</td>
-</tr>
-<tr>
-<td><code>ERROR</code></td>
-<td>Critical failures (early exit)</td>
-</tr>
-</tbody>
-</table>
-<h2 id="testing-configuration">Testing Configuration</h2>
-<p>For running <code>pytest</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Use in-memory DuckDB + file fallback for faces</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">SV_DB_PATH</span><span class="o">=</span>:memory:
-<span class="nb">export</span><span class="w"> </span><span class="nv">SV_REDIS_URL</span><span class="o">=</span>redis://localhost:9999/0<span class="w">  </span><span class="c1"># Non-existent; triggers file fallback</span>
-
-pytest<span class="w"> </span>tests/<span class="w"> </span>-v
-</code></pre></div>
-<p>All test fixtures respect these environment variables.</p>
+<p>Precedence remains:</p>
+<ol>
+<li>Manual per-detection distance (<code>detections</code>)</li>
+<li>Manual per-image default (<code>default</code>)</li>
+<li>Manual global distance (<code>global_ft</code> / <code>--d0-ft</code>)</li>
+<li>Camera calibration (<code>--camera</code>)</li>
+<li>ZoeDepth (only when camera calibration is not enabled)</li>
+</ol>
+<h2 id="adding-a-new-camera">Adding a New Camera</h2>
+<p>Add a new <code>CameraProfile</code> entry in:</p>
+<ul>
+<li><code>src/sensveridian/augmentation/camera.py</code></li>
+</ul>
+<p>Then register it in <code>CAMERA_REGISTRY</code> so <code>--camera &lt;name&gt;</code> can resolve it.</p>
 
 
 
