@@ -68,7 +68,7 @@ def test_wide_view_pivots_summary_columns(duck_store) -> None:
     duck_store.ensure_run("r1")
     duck_store.upsert_image("img1", "/tmp/a.jpg", 640, 480)
     duck_store.upsert_summary("img1", "r1", "amod", SummaryRow(True, 2, {"k": 1}))
-    duck_store.upsert_summary("img1", "r1", "qrcode", SummaryRow(False, 0, {"decoded_count": 0}))
+    duck_store.upsert_summary("img1", "r1", "qrcode", SummaryRow(False, 0, {}))
     v = duck_store.query_df("select image_id, amod_present, n_amod, qrc_present, n_qrc from v_image_summary_wide where image_id='img1'")
     assert len(v) == 1
     row = v.iloc[0]

@@ -528,9 +528,9 @@ FROM predictions_raw
 WHERE model_id = 'amod'
 LIMIT 5;
 
--- Explode QR decoded text counts
+-- Pull QR detection payloads produced by the model
 SELECT image_id,
-       json_array_length(payload->'$.decoded_texts') AS decoded_count
+       payload->>'$.detections' AS qrcode_detections_json
 FROM predictions_raw
 WHERE model_id = 'qrcode';
 ```
