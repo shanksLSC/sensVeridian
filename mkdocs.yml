@@ -65,6 +65,7 @@ nav:
   - Augmentation:
       - Distance Sweep: augmentation/distance-sweep.md
       - Camera Calibration: augmentation/calibration.md
+      - Frame Miniaturize: augmentation/frame-miniaturize.md
       - Manual Overrides: augmentation/manual-overrides.md
   - Operations:
       - Environment Variables: operations/environment.md

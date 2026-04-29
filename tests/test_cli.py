@@ -126,3 +126,57 @@ def test_cli_ingest_with_patched_orchestrator(cli_runner: CliRunner, tmp_path: P
     assert "seen=" in r.stdout
     assert "ingested=" in r.stdout
     assert "writes=" in r.stdout
+
+
+def test_cli_augment_miniaturize_with_patched_worker(cli_runner: CliRunner, tmp_path: Path, monkeypatch, file_registry) -> None:
+    store_factory, _db = _make_store_factory(tmp_path)
+    monkeypatch.setattr(cli_mod, "_store", store_factory)
+    monkeypatch.setattr(cli_mod, "_registry", lambda: file_registry)
+
+    class _FakeOrchestrator:
+        def __init__(self, store, registry):
+            self.store = store
+            self.registry = registry
+
+    class _FakeMiniaturizer:
+        def __init__(self, store, orchestrator, device, camera_profile=None):
+            self.store = store
+            self.orchestrator = orchestrator
+            self.device = device
+            self.camera_profile = camera_profile
+
+        def augment_image(
+            self,
+            image_path,
+            run_id,
+            d_max_ft,
+            step_ft,
+            source_models,
+            out_dir,
+            auto_run_oracle=False,
+            overrides=None,
+            pad_mode="black",
+        ):
+            return 2
+
+    monkeypatch.setattr(cli_mod, "Orchestrator", _FakeOrchestrator)
+    monkeypatch.setattr(cli_mod, "FrameMiniaturizer", _FakeMiniaturizer)
+
+    image_dir = tmp_path / "imgs"
+    image_dir.mkdir(parents=True, exist_ok=True)
+    _write_image(image_dir / "a.png")
+
+    r = cli_runner.invoke(
+        cli_mod.app,
+        [
+            "augment",
+            "miniaturize",
+            str(image_dir),
+            "--d-max-ft",
+            "10",
+            "--step-ft",
+            "1",
+        ],
+    )
+    assert r.exit_code == 0
+    assert "Frame miniaturization complete." in r.stdout

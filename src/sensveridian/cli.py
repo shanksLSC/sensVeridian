@@ -13,6 +13,7 @@ from .store.faces_registry import FaceRegistry
 from .seed_faces import seed_dummy_faces
 from .orchestrator import Orchestrator
 from .augmentation.distance_sweep import DistanceAugmentor
+from .augmentation.frame_miniaturize import FrameMiniaturizer
 from .augmentation.camera import get_camera_profile
 from .augmentation.manual_distance import DistanceOverrides
 
@@ -228,6 +229,105 @@ def augment_distance(
                 overrides=overrides,
             )
         console.print(f"Distance augmentation complete. Generated {total} images under {out_root}")
+    finally:
+        s.close()
+
+
+@augment_app.command("miniaturize")
+def augment_miniaturize(
+    image_or_folder: Path = typer.Argument(..., exists=True),
+    d_max_ft: float = typer.Option(..., help="Upper distance threshold in feet."),
+    step_ft: float = typer.Option(..., help="Distance step in feet."),
+    source_models: str = typer.Option("amod,fd,qrcode", help="Detection sources for baseline distance estimation."),
+    run_id: str = typer.Option("miniaturized", help="Run id used if auto oracle run is enabled."),
+    auto_run_oracle: bool = typer.Option(False, help="Run oracle models on generated images."),
+    pad_mode: str = typer.Option(
+        "black",
+        "--pad-mode",
+        help="Padding mode after downscale: black | replicate | reflect",
+    ),
+    camera: Optional[str] = typer.Option(
+        None,
+        "--camera",
+        help="Camera profile for calibration-based distance fallback (for example: imx219). Replaces ZoeDepth fallback when set.",
+    ),
+    camera_native: Optional[str] = typer.Option(
+        None,
+        "--camera-native",
+        help="Override camera native resolution as WxH (for example: 1640x1232).",
+    ),
+    d0_ft: Optional[float] = typer.Option(
+        None,
+        "--d0-ft",
+        help="Manual initial distance (feet) applied to every detection. Lowest-priority override.",
+    ),
+    d0_map: Optional[Path] = typer.Option(
+        None,
+        "--d0-map",
+        exists=True,
+        help="JSON file with per-image / per-detection manual distance overrides.",
+    ),
+):
+    s = _store()
+    try:
+        reg = _registry()
+        orch = Orchestrator(store=s, registry=reg)
+
+        camera_profile = None
+        if camera is not None:
+            camera_profile = get_camera_profile(camera)
+            if camera_native:
+                try:
+                    native_w, native_h = [int(x.strip()) for x in camera_native.lower().split("x", 1)]
+                except Exception as exc:  # pragma: no cover - argument validation path
+                    raise typer.BadParameter("--camera-native must be in WxH format, for example 1640x1232") from exc
+                if native_w <= 0 or native_h <= 0:
+                    raise typer.BadParameter("--camera-native dimensions must be positive integers")
+                camera_profile = camera_profile.with_native_resolution(native_w_px=native_w, native_h_px=native_h)
+
+        mini = FrameMiniaturizer(
+            store=s,
+            orchestrator=orch,
+            device=SETTINGS.device,
+            camera_profile=camera_profile,
+        )
+        roots = [image_or_folder] if image_or_folder.is_file() else sorted([p for p in image_or_folder.rglob("*") if p.is_file()])
+        out_root = SETTINGS.cache_dir / "augmentations" / f"{run_id}_{uuid.uuid4().hex[:8]}"
+        total = 0
+        selected = [m.strip() for m in source_models.split(",") if m.strip()]
+
+        if d0_map is not None:
+            overrides = DistanceOverrides.from_json(d0_map)
+            if d0_ft is not None and overrides.global_ft is None:
+                overrides.global_ft = float(d0_ft)
+        elif d0_ft is not None:
+            overrides = DistanceOverrides(global_ft=float(d0_ft))
+        else:
+            overrides = DistanceOverrides.empty()
+
+        console.print(
+            f"Frame miniaturize: pad_mode={pad_mode}, global_ft={overrides.global_ft}, image_entries={len(overrides.images)}"
+        )
+        if camera_profile is not None:
+            console.print(
+                f"Camera calibration enabled: {camera_profile.name} ({camera_profile.native_w_px}x{camera_profile.native_h_px})"
+            )
+
+        for p in roots:
+            if p.suffix.lower() not in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}:
+                continue
+            total += mini.augment_image(
+                image_path=p,
+                run_id=run_id,
+                d_max_ft=d_max_ft,
+                step_ft=step_ft,
+                source_models=selected,
+                out_dir=out_root,
+                auto_run_oracle=auto_run_oracle,
+                overrides=overrides,
+                pad_mode=pad_mode,
+            )
+        console.print(f"Frame miniaturization complete. Generated {total} images under {out_root}")
     finally:
         s.close()
 

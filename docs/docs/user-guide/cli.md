@@ -185,3 +185,41 @@ sv augment list <parent_image_id>
 ```bash
 sv augment list 329acdb6e9850f346b06d04fd73aec48f28d793e5c8...
 ```
+
+## augment miniaturize
+
+Generate distance augmentation by shrinking the full frame and padding back to original size.
+
+```
+sv augment miniaturize <image_or_folder>
+  --d-max-ft FLOAT            Upper distance threshold in feet (required)
+  --step-ft FLOAT             Distance step in feet (required)
+  [--source-models STR]       Detection sources for baseline distance (default: "amod,fd,qrcode")
+  [--run-id STR]              Run tag for auto oracle rerun (default: "miniaturized")
+  [--auto-run-oracle]         Re-run oracles on generated images
+  [--pad-mode STR]            black | replicate | reflect (default: "black")
+  [--d0-ft FLOAT]             Manual initial distance (feet)
+  [--d0-map PATH]             JSON file with per-image/per-detection overrides
+  [--camera TEXT]             Camera profile for calibration fallback (e.g. imx219)
+  [--camera-native WxH]       Override camera native mode (e.g. 1640x1232)
+```
+
+### Examples
+
+```bash
+# Fast deterministic distance simulation
+sv augment miniaturize /data3/ssharma8/all-models/Images \
+  --d-max-ft 15 --step-ft 1 \
+  --pad-mode black
+
+# Calibration-backed distance baseline
+sv augment miniaturize /data3/ssharma8/all-models/Images \
+  --d-max-ft 15 --step-ft 1 \
+  --camera imx219 --camera-native 1640x1232 \
+  --pad-mode reflect
+
+# Manual known baseline with oracle rerun
+sv augment miniaturize /data3/ssharma8/all-models/Images \
+  --d-max-ft 10 --step-ft 1 \
+  --d0-ft 5.0 --auto-run-oracle --run-id mini_eval
+```
