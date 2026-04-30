@@ -994,6 +994,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#step-cap-and-step-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step Cap and Step Size
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#specifying-initial-distance" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1531,6 +1542,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#step-cap-and-step-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step Cap and Step Size
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#specifying-initial-distance" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1723,7 +1745,21 @@
 <li><strong>Atmospheric Haze</strong>: Add slight haze for far objects</li>
 </ul>
 <h3 id="6-oracle-re-run-optional">6. Oracle Re-run (Optional)</h3>
-<p>Set <code>--auto-run-oracle</code> to re-run all oracle models on each augmented image. Creates a <strong>distance vs. accuracy dataset</strong> automatically.</p>
+<p>Set <code>--auto-run-oracle</code> to re-run oracle models on each augmented image. Creates a <strong>distance vs. accuracy dataset</strong> automatically.</p>
+<p>By default the rerun executes all four models (<code>amod</code>, <code>qrcode</code>, <code>fd</code>, <code>fr</code>).
+You can narrow this with <code>--models</code> (e.g. <code>--models amod</code>) and override the
+detection confidence threshold with the generic <code>--conf</code> flag — the same flag
+honored by <code>sv ingest</code>. Both flags are model-agnostic; <code>--conf</code> is applied to
+any runner that exposes a <code>conf_threshold</code> attribute.</p>
+<h2 id="step-cap-and-step-size">Step Cap and Step Size</h2>
+<p>Steps can be capped two ways and either is sufficient:</p>
+<ul>
+<li><code>--d-max-ft FLOAT</code> — stop once <code>d0 + delta_ft &gt; d-max-ft</code></li>
+<li><code>--n-steps INT</code> — run exactly N steps regardless of distance</li>
+</ul>
+<p>The step size itself can be specified in feet (<code>--step-ft</code>) or meters
+(<code>--step-m</code>); the two are mutually exclusive. The miniaturize and distance
+sweep CLIs share these flags.</p>
 <h2 id="specifying-initial-distance">Specifying Initial Distance</h2>
 <h3 id="automatic-zoedepth">Automatic (ZoeDepth)</h3>
 <p>By default, ZoeDepth estimates the initial distance <code>d0</code> from the input image:</p>

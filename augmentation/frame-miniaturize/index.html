@@ -1353,6 +1353,17 @@ then placing it back into the original canvas with controlled padding.</p>
 <span class="w">  </span>--d0-ft<span class="w"> </span><span class="m">5</span>.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--pad-mode<span class="w"> </span>black
 </code></pre></div>
+<p>Fixed-N steps in meters with an AMOD-only oracle rerun at <code>conf=0.5</code>:</p>
+<div class="highlight"><pre><span></span><code>sv<span class="w"> </span>augment<span class="w"> </span>miniaturize<span class="w"> </span>/data3/ssharma8/datasets/mod2_class/images/test<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--step-m<span class="w"> </span><span class="m">10</span><span class="w"> </span>--n-steps<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source-models<span class="w"> </span>amod<span class="w"> </span>--models<span class="w"> </span>amod<span class="w"> </span>--conf<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pad-mode<span class="w"> </span>black<span class="w"> </span>--auto-run-oracle<span class="w"> </span>--run-id<span class="w"> </span>mod2_test_amod_c05
+</code></pre></div>
+<p>The step cap accepts <code>--d-max-ft</code>, <code>--n-steps</code>, or both (whichever fires
+first wins). The step size itself can be specified in feet (<code>--step-ft</code>) or
+meters (<code>--step-m</code>); the two are mutually exclusive. The same generic
+<code>--conf</code> and <code>--models</code> flags honored by <code>sv ingest</code> apply to the
+auto-run-oracle rerun.</p>
 <h2 id="pad-modes">Pad Modes</h2>
 <ul>
 <li><code>black</code> (default): zero-filled border</li>

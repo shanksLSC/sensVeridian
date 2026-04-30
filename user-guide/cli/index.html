@@ -670,6 +670,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#refresh-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        refresh-metadata
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="refresh-metadata">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#faces" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -682,7 +710,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#examples_3" class="md-nav__link">
+  <a href="#examples_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         Examples
@@ -710,7 +738,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#examples_4" class="md-nav__link">
+  <a href="#examples_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         Examples
@@ -766,7 +794,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#examples_5" class="md-nav__link">
+  <a href="#examples_6" class="md-nav__link">
     <span class="md-ellipsis">
       
         Examples
@@ -1489,6 +1517,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#refresh-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        refresh-metadata
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="refresh-metadata">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#faces" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1501,7 +1557,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#examples_3" class="md-nav__link">
+  <a href="#examples_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         Examples
@@ -1529,7 +1585,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#examples_4" class="md-nav__link">
+  <a href="#examples_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         Examples
@@ -1585,7 +1641,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#examples_5" class="md-nav__link">
+  <a href="#examples_6" class="md-nav__link">
     <span class="md-ellipsis">
       
         Examples
@@ -1648,6 +1704,10 @@
 <td>Show row counts for all tables</td>
 </tr>
 <tr>
+<td><code>sv refresh-metadata</code></td>
+<td>Recompute the <code>images.metadata</code> JSON column for one or many images</td>
+</tr>
+<tr>
 <td><code>sv faces ...</code></td>
 <td>Face registry subcommands</td>
 </tr>
@@ -1657,13 +1717,25 @@
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p>All long-running commands now print a tqdm progress bar over the per-image loop,
+showing live counters for <code>ingested</code>, <code>writes</code>, and (for augment) <code>generated</code>.
+Inner ingest bars triggered by <code>--auto-run-oracle</code> collapse on completion so
+the outer augmentation bar stays clean.</p>
+</blockquote>
 <h2 id="ingest">ingest</h2>
 <p>Run the oracle pipeline on a folder (recursive) or a single file.</p>
 <div class="highlight"><pre><span></span><code>sv ingest &lt;image_root&gt;
   [--run-id STR]           Run identifier (default: &quot;baseline&quot;)
   [--models STR]           Comma-separated model IDs (default: &quot;amod,qrcode,fd,fr&quot;)
   [--skip-existing BOOL]   Skip (image_id, run_id) already processed (default: True)
+  [--conf FLOAT]           Generic detection confidence threshold override (applied
+                           to any runner that exposes a `conf_threshold` attribute,
+                           e.g. AMOD).
 </code></pre></div>
+<p>After every per-image batch of writes, <code>sv ingest</code> recomputes the <code>images.metadata</code>
+JSON column for that image so it always reflects the most recent model runs,
+augmentation state, and per-runner confidence thresholds.</p>
 <h3 id="examples">Examples</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Baseline ingest, all four models</span>
 sv<span class="w"> </span>ingest<span class="w"> </span>/data3/ssharma8/all-models/Images<span class="w"> </span>--run-id<span class="w"> </span>baseline
@@ -1673,6 +1745,10 @@ sv<span class="w"> </span>ingest<span class="w"> </span>/data3/ssharma8/all-mode
 
 <span class="c1"># Custom run tag for an experiment</span>
 sv<span class="w"> </span>ingest<span class="w"> </span>/data3/ssharma8/all-models/Images<span class="w"> </span>--run-id<span class="w"> </span>exp_2026_04_24_cpu
+
+<span class="c1"># AMOD-only with a stricter detection threshold (0.5 instead of the runner default)</span>
+sv<span class="w"> </span>ingest<span class="w"> </span>/data3/ssharma8/datasets/mod2_class/images/test<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--models<span class="w"> </span>amod<span class="w"> </span>--conf<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--run-id<span class="w"> </span>mod2_test_amod_c05
 </code></pre></div>
 <h2 id="query">query</h2>
 <p>Run any SQL against the live DuckDB file.</p>
@@ -1709,13 +1785,35 @@ sv<span class="w"> </span><span class="nb">export</span><span class="w"> </span>
 <span class="c1"># predictions_raw: 16</span>
 <span class="c1"># augmentations: 5</span>
 </code></pre></div>
+<h2 id="refresh-metadata">refresh-metadata</h2>
+<p>Recompute the <code>images.metadata</code> JSON column from the current contents of
+<code>images</code>, <code>augmentations</code>, <code>predictions_summary</code>, <code>predictions_raw</code>, and
+<code>models</code>. Useful after backfilling data, changing runner settings, or after
+running augmentation pipelines that did not propagate metadata for some reason.</p>
+<div class="highlight"><pre><span></span><code>sv refresh-metadata
+  [--run-id STR]      Only refresh images that have predictions for this run
+  [--image-id STR]    Refresh exactly one image_id (overrides --run-id)
+</code></pre></div>
+<h3 id="examples_3">Examples</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Refresh metadata for every image touched by run &quot;mod2_test_amod_c05&quot;</span>
+sv<span class="w"> </span>refresh-metadata<span class="w"> </span>--run-id<span class="w"> </span>mod2_test_amod_c05
+
+<span class="c1"># Refresh just one image</span>
+sv<span class="w"> </span>refresh-metadata<span class="w"> </span>--image-id<span class="w"> </span>329acdb6e9850f346b06d04fd73aec48f28d793e5c8...
+
+<span class="c1"># Refresh metadata across the entire DB</span>
+sv<span class="w"> </span>refresh-metadata
+</code></pre></div>
+<p>A tqdm bar tracks per-image progress. See
+<a href="../data-model/#imagesmetadata-json-schema">Data Model → images.metadata schema</a>
+for the JSON layout.</p>
 <h2 id="faces">faces</h2>
 <p>Manage the registered-faces lookup used by FR.</p>
 <div class="highlight"><pre><span></span><code>sv faces seed [--n INT] [--embedding-dim INT] [--clear-first]
 sv faces list
 sv faces clear
 </code></pre></div>
-<h3 id="examples_3">Examples</h3>
+<h3 id="examples_4">Examples</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Seed 8 dummy identities (clears first)</span>
 sv<span class="w"> </span>faces<span class="w"> </span>seed<span class="w"> </span>--n<span class="w"> </span><span class="m">8</span><span class="w"> </span>--clear-first
 
@@ -1731,10 +1829,18 @@ sv<span class="w"> </span>faces<span class="w"> </span>clear
 <h2 id="augment-distance">augment distance</h2>
 <p>Generate distance-swept versions of each detected object.</p>
 <div class="highlight"><pre><span></span><code>sv augment distance &lt;image_or_folder&gt;
-  --d-max-ft FLOAT            Upper distance threshold in feet (required)
-  --step-ft FLOAT             Distance step in feet (required)
   --sam-checkpoint PATH       SAM .pth checkpoint path (required)
+  [--d-max-ft FLOAT]          Upper distance threshold in feet
+  [--step-ft FLOAT]           Distance step in feet
+  [--step-m FLOAT]            Distance step in meters (alternative to --step-ft;
+                              mutually exclusive)
+  [--n-steps INT]             Run exactly N augmentation steps (overrides
+                              the d-max-ft cap when set)
   [--source-models STR]       Detection sources (default: &quot;amod,fd,qrcode&quot;)
+  [--models STR]              Models to re-run on generated images when
+                              --auto-run-oracle is set (default: &quot;amod,qrcode,fd,fr&quot;)
+  [--conf FLOAT]              Generic detection confidence threshold override
+                              applied during the auto-run-oracle pass.
   [--run-id STR]              Run tag for auto oracle rerun (default: &quot;augmented&quot;)
   [--auto-run-oracle]         Re-run oracles on generated images
   [--d0-ft FLOAT]             Manual initial distance (feet)
@@ -1742,7 +1848,9 @@ sv<span class="w"> </span>faces<span class="w"> </span>clear
   [--camera TEXT]             Camera profile for calibration fallback (e.g. imx219)
   [--camera-native WxH]       Override camera native mode (e.g. 1640x1232)
 </code></pre></div>
-<h3 id="examples_4">Examples</h3>
+<p>You must provide at least one of <code>--d-max-ft</code> or <code>--n-steps</code>. Step size is
+required and may be supplied as either <code>--step-ft</code> or <code>--step-m</code> (only one).</p>
+<h3 id="examples_5">Examples</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># One image, 5ft -&gt; 10ft at 1ft steps</span>
 sv<span class="w"> </span>augment<span class="w"> </span>distance<span class="w"> </span>/data3/ssharma8/all-models/Images/qr_code/gard_00000.png<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--d-max-ft<span class="w"> </span><span class="m">10</span><span class="w"> </span>--step-ft<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
@@ -1776,6 +1884,13 @@ sv<span class="w"> </span>augment<span class="w"> </span>distance<span class="w"
 <span class="w">  </span>--d-max-ft<span class="w"> </span><span class="m">15</span><span class="w"> </span>--step-ft<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--camera<span class="w"> </span>imx219<span class="w"> </span>--camera-native<span class="w"> </span>1640x1232<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sam-checkpoint<span class="w"> </span>/data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
+
+<span class="c1"># Fixed N=5 steps using meters with an AMOD-only oracle rerun at conf=0.5</span>
+sv<span class="w"> </span>augment<span class="w"> </span>distance<span class="w"> </span>/data3/ssharma8/datasets/mod2_class/images/test<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--step-m<span class="w"> </span><span class="m">10</span><span class="w"> </span>--n-steps<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source-models<span class="w"> </span>amod<span class="w"> </span>--models<span class="w"> </span>amod<span class="w"> </span>--conf<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto-run-oracle<span class="w"> </span>--run-id<span class="w"> </span>mod2_test_amod_c05<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sam-checkpoint<span class="w"> </span>/data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
 </code></pre></div>
 <h2 id="augment-list">augment list</h2>
 <p>List augmentations for a given parent image.</p>
@@ -1787,9 +1902,17 @@ sv<span class="w"> </span>augment<span class="w"> </span>distance<span class="w"
 <h2 id="augment-miniaturize">augment miniaturize</h2>
 <p>Generate distance augmentation by shrinking the full frame and padding back to original size.</p>
 <div class="highlight"><pre><span></span><code>sv augment miniaturize &lt;image_or_folder&gt;
-  --d-max-ft FLOAT            Upper distance threshold in feet (required)
-  --step-ft FLOAT             Distance step in feet (required)
+  [--d-max-ft FLOAT]          Upper distance threshold in feet
+  [--step-ft FLOAT]           Distance step in feet
+  [--step-m FLOAT]            Distance step in meters (alternative to --step-ft;
+                              mutually exclusive)
+  [--n-steps INT]             Run exactly N augmentation steps (overrides
+                              the d-max-ft cap when set)
   [--source-models STR]       Detection sources for baseline distance (default: &quot;amod,fd,qrcode&quot;)
+  [--models STR]              Models to re-run on generated images when
+                              --auto-run-oracle is set (default: &quot;amod,qrcode,fd,fr&quot;)
+  [--conf FLOAT]              Generic detection confidence threshold override
+                              applied during the auto-run-oracle pass.
   [--run-id STR]              Run tag for auto oracle rerun (default: &quot;miniaturized&quot;)
   [--auto-run-oracle]         Re-run oracles on generated images
   [--pad-mode STR]            black | replicate | reflect (default: &quot;black&quot;)
@@ -1798,7 +1921,9 @@ sv<span class="w"> </span>augment<span class="w"> </span>distance<span class="w"
   [--camera TEXT]             Camera profile for calibration fallback (e.g. imx219)
   [--camera-native WxH]       Override camera native mode (e.g. 1640x1232)
 </code></pre></div>
-<h3 id="examples_5">Examples</h3>
+<p>You must provide at least one of <code>--d-max-ft</code> or <code>--n-steps</code>. Step size is
+required and may be supplied as either <code>--step-ft</code> or <code>--step-m</code> (only one).</p>
+<h3 id="examples_6">Examples</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Fast deterministic distance simulation</span>
 sv<span class="w"> </span>augment<span class="w"> </span>miniaturize<span class="w"> </span>/data3/ssharma8/all-models/Images<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--d-max-ft<span class="w"> </span><span class="m">15</span><span class="w"> </span>--step-ft<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
@@ -1814,6 +1939,12 @@ sv<span class="w"> </span>augment<span class="w"> </span>miniaturize<span class=
 sv<span class="w"> </span>augment<span class="w"> </span>miniaturize<span class="w"> </span>/data3/ssharma8/all-models/Images<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--d-max-ft<span class="w"> </span><span class="m">10</span><span class="w"> </span>--step-ft<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--d0-ft<span class="w"> </span><span class="m">5</span>.0<span class="w"> </span>--auto-run-oracle<span class="w"> </span>--run-id<span class="w"> </span>mini_eval
+
+<span class="c1"># Generate exactly 5 miniaturized variants every 10 m, AMOD-only at conf=0.5</span>
+sv<span class="w"> </span>augment<span class="w"> </span>miniaturize<span class="w"> </span>/data3/ssharma8/datasets/mod2_class/images/test<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--step-m<span class="w"> </span><span class="m">10</span><span class="w"> </span>--n-steps<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source-models<span class="w"> </span>amod<span class="w"> </span>--models<span class="w"> </span>amod<span class="w"> </span>--conf<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pad-mode<span class="w"> </span>black<span class="w"> </span>--auto-run-oracle<span class="w"> </span>--run-id<span class="w"> </span>mod2_test_amod_c05
 </code></pre></div>
 
 

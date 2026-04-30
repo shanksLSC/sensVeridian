@@ -612,6 +612,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="images">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#imagesmetadata-json-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        images.metadata JSON schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -945,6 +962,28 @@
     <span class="md-ellipsis">
       
         Query 9: Models missing from images (false negatives)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#query-10a-inspect-image-metadata-for-one-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query 10a: Inspect image metadata for one image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#query-10b-augmented-vs-original-counts-and-distance-histogram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query 10b: Augmented vs. original counts and distance histogram
       
     </span>
   </a>
@@ -1561,6 +1600,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="images">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#imagesmetadata-json-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        images.metadata JSON schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1901,6 +1957,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#query-10a-inspect-image-metadata-for-one-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query 10a: Inspect image metadata for one image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#query-10b-augmented-vs-original-counts-and-distance-histogram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query 10b: Augmented vs. original counts and distance histogram
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#query-10-summary-statistics-across-all-runs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1978,6 +2056,80 @@
 <td><code>ingest_time</code></td>
 <td>TIMESTAMP</td>
 <td>When inserted</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td>JSON</td>
+<td>Per-image rollup of model runs and augmentation provenance. See <a href="#imagesmetadata-json-schema">schema</a> below. Auto-refreshed by <code>sv ingest</code>, augmentation runs, and <code>sv refresh-metadata</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="imagesmetadata-json-schema"><code>images.metadata</code> JSON schema</h4>
+<p>The <code>metadata</code> column carries everything you need to know about an image — its
+augmentation lineage and every model run associated with it — without joining
+across multiple tables. It is updated transactionally at the end of each
+per-image processing loop, so it always reflects the latest writes.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;image_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;329acdb6e9850f346b06d04fd73aec48...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/data3/ssharma8/datasets/mod2_class/images/test/img_0001.jpg&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;width&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1280</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;height&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">720</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;augmented_flag&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;augmented_distance_m&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;parent_image_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;model_runs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;model_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;amod&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;8.2.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;weights_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/data3/ssharma8/all-models/AutomotiveMultiObjectDetection/amod-cpnx-8.2.0.h5&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;weights_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;8f2a...&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;run_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mod2_test_amod_c05&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;conf_threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;present&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;n_detections&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;class_histogram&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;car&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;person&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;detections&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;bbox&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">12</span><span class="p">,</span><span class="w"> </span><span class="mi">40</span><span class="p">,</span><span class="w"> </span><span class="mi">220</span><span class="p">,</span><span class="w"> </span><span class="mi">360</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;class_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;confidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.92</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;bbox&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">400</span><span class="p">,</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span><span class="w"> </span><span class="mi">720</span><span class="p">,</span><span class="w"> </span><span class="mi">410</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;class_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;confidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.88</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;bbox&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">800</span><span class="p">,</span><span class="w"> </span><span class="mi">200</span><span class="p">,</span><span class="w"> </span><span class="mi">880</span><span class="p">,</span><span class="w"> </span><span class="mi">480</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;class_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;confidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.74</span><span class="p">}</span>
+<span class="w">      </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>image_id</code> / <code>path</code> / <code>width</code> / <code>height</code></td>
+<td>scalar</td>
+<td>Mirrors the row's primary fields.</td>
+</tr>
+<tr>
+<td><code>augmented_flag</code></td>
+<td>bool</td>
+<td>True if this image was generated by an augmentation pipeline (i.e., it has a row in <code>augmentations</code> as the <code>augmented_image_id</code>).</td>
+</tr>
+<tr>
+<td><code>augmented_distance_m</code></td>
+<td>float | null</td>
+<td>Augmentation <code>delta_ft</code> converted to meters. Null for original images.</td>
+</tr>
+<tr>
+<td><code>parent_image_id</code></td>
+<td>string | null</td>
+<td>Original image's <code>image_id</code> for augmented children; null for originals.</td>
+</tr>
+<tr>
+<td><code>model_runs</code></td>
+<td>list</td>
+<td>One entry per <code>(run_id, model_id)</code> row in <code>predictions_summary</code>, joined with the corresponding <code>predictions_raw.payload</code> and the registered model record. Each entry records the live <code>conf_threshold</code> of the runner at refresh time.</td>
 </tr>
 </tbody>
 </table>
@@ -2495,6 +2647,23 @@ def456ghi789jkl...    | /data/Images/multi/cars_01.png   | fd, qrcode, fr
 pqr123stu456vwx...    | /data/Images/qr_code/gard_01.jpg | amod, fd, qrcode, fr
 xyz789uvw012345...    | /data/Images/face_pics/john.jpg  | amod, qrcode
 </code></pre></div></p>
+<h3 id="query-10a-inspect-image-metadata-for-one-image">Query 10a: Inspect image metadata for one image</h3>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">json_extract_string</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;$.image_id&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">image_id</span><span class="p">,</span>
+<span class="w">       </span><span class="n">json_extract</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;$.augmented_flag&#39;</span><span class="p">)</span><span class="w">        </span><span class="k">AS</span><span class="w"> </span><span class="n">augmented_flag</span><span class="p">,</span>
+<span class="w">       </span><span class="n">json_extract</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;$.augmented_distance_m&#39;</span><span class="p">)</span><span class="w">  </span><span class="k">AS</span><span class="w"> </span><span class="n">augmented_distance_m</span><span class="p">,</span>
+<span class="w">       </span><span class="n">json_extract</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;$.model_runs&#39;</span><span class="p">)</span><span class="w">            </span><span class="k">AS</span><span class="w"> </span><span class="n">model_runs</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">images</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">image_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;329acdb6e9850f346b06d04fd73aec48...&#39;</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="query-10b-augmented-vs-original-counts-and-distance-histogram">Query 10b: Augmented vs. original counts and distance histogram</h3>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span>
+<span class="w">  </span><span class="k">CASE</span><span class="w"> </span><span class="k">WHEN</span><span class="w"> </span><span class="n">json_extract</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;$.augmented_flag&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="w"> </span><span class="k">THEN</span><span class="w"> </span><span class="s1">&#39;augmented&#39;</span><span class="w"> </span><span class="k">ELSE</span><span class="w"> </span><span class="s1">&#39;original&#39;</span><span class="w"> </span><span class="k">END</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">image_type</span><span class="p">,</span>
+<span class="w">  </span><span class="n">json_extract</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;$.augmented_distance_m&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">distance_m</span><span class="p">,</span>
+<span class="w">  </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">n</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">images</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">image_type</span><span class="p">,</span><span class="w"> </span><span class="n">distance_m</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">image_type</span><span class="p">,</span><span class="w"> </span><span class="n">distance_m</span><span class="p">;</span>
+</code></pre></div>
 <h3 id="query-10-summary-statistics-across-all-runs">Query 10: Summary statistics across all runs</h3>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span>
 <span class="w">  </span><span class="k">COUNT</span><span class="p">(</span><span class="k">DISTINCT</span><span class="w"> </span><span class="n">image_id</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">total_images</span><span class="p">,</span>
