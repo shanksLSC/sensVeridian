@@ -50,6 +50,21 @@ sv augment miniaturize /path/to/images \
   --pad-mode black
 ```
 
+Fixed-N steps in meters with an AMOD-only oracle rerun at `conf=0.5`:
+
+```bash
+sv augment miniaturize /data3/ssharma8/datasets/mod2_class/images/test \
+  --step-m 10 --n-steps 5 \
+  --source-models amod --models amod --conf 0.5 \
+  --pad-mode black --auto-run-oracle --run-id mod2_test_amod_c05
+```
+
+The step cap accepts `--d-max-ft`, `--n-steps`, or both (whichever fires
+first wins). The step size itself can be specified in feet (`--step-ft`) or
+meters (`--step-m`); the two are mutually exclusive. The same generic
+`--conf` and `--models` flags honored by `sv ingest` apply to the
+auto-run-oracle rerun.
+
 ## Pad Modes
 
 - `black` (default): zero-filled border

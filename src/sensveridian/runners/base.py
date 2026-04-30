@@ -31,3 +31,12 @@ class Runner(Protocol):
     def predict(self, image_bgr: np.ndarray, deps: dict[str, RunnerOutput]) -> RunnerOutput:
         ...
 
+
+def set_conf_threshold(runner: Any, conf_threshold: float | None) -> bool:
+    if conf_threshold is None:
+        return False
+    if not hasattr(runner, "conf_threshold"):
+        return False
+    setattr(runner, "conf_threshold", float(conf_threshold))
+    return True
+

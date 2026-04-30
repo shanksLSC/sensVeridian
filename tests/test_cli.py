@@ -107,11 +107,20 @@ def test_cli_ingest_with_patched_orchestrator(cli_runner: CliRunner, tmp_path: P
         predictions_written: int
 
     class _FakeOrchestrator:
-        def __init__(self, store, registry):
+        def __init__(self, store, registry, conf_threshold=None):
             self.store = store
             self.registry = registry
+            self.conf_threshold = conf_threshold
 
-        def ingest(self, image_root, run_id, selected_models, skip_existing=True):
+        def ingest(
+            self,
+            image_root,
+            run_id,
+            selected_models,
+            skip_existing=True,
+            progress=True,
+            progress_leave=True,
+        ):
             return _Res(images_seen=2, images_ingested=2, predictions_written=8)
 
     monkeypatch.setattr(cli_mod, "Orchestrator", _FakeOrchestrator)
@@ -134,9 +143,10 @@ def test_cli_augment_miniaturize_with_patched_worker(cli_runner: CliRunner, tmp_
     monkeypatch.setattr(cli_mod, "_registry", lambda: file_registry)
 
     class _FakeOrchestrator:
-        def __init__(self, store, registry):
+        def __init__(self, store, registry, conf_threshold=None):
             self.store = store
             self.registry = registry
+            self.conf_threshold = conf_threshold
 
     class _FakeMiniaturizer:
         def __init__(self, store, orchestrator, device, camera_profile=None):
@@ -156,6 +166,8 @@ def test_cli_augment_miniaturize_with_patched_worker(cli_runner: CliRunner, tmp_
             auto_run_oracle=False,
             overrides=None,
             pad_mode="black",
+            n_steps=None,
+            rerun_models=None,
         ):
             return 2
 

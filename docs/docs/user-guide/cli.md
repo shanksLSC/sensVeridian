@@ -10,8 +10,14 @@ Entrypoint: `sv` (installed via `pyproject.toml`) or `python -m sensveridian.cli
 | `sv query` | Execute arbitrary SQL against DuckDB |
 | `sv export` | Export a SQL result to parquet |
 | `sv stats` | Show row counts for all tables |
+| `sv refresh-metadata` | Recompute the `images.metadata` JSON column for one or many images |
 | `sv faces ...` | Face registry subcommands |
 | `sv augment ...` | Augmentation subcommands |
+
+> All long-running commands now print a tqdm progress bar over the per-image loop,
+> showing live counters for `ingested`, `writes`, and (for augment) `generated`.
+> Inner ingest bars triggered by `--auto-run-oracle` collapse on completion so
+> the outer augmentation bar stays clean.
 
 ## ingest
 
@@ -22,7 +28,14 @@ sv ingest <image_root>
   [--run-id STR]           Run identifier (default: "baseline")
   [--models STR]           Comma-separated model IDs (default: "amod,qrcode,fd,fr")
   [--skip-existing BOOL]   Skip (image_id, run_id) already processed (default: True)
+  [--conf FLOAT]           Generic detection confidence threshold override (applied
+                           to any runner that exposes a `conf_threshold` attribute,
+                           e.g. AMOD).
 ```
+
+After every per-image batch of writes, `sv ingest` recomputes the `images.metadata`
+JSON column for that image so it always reflects the most recent model runs,
+augmentation state, and per-runner confidence thresholds.
 
 ### Examples
 
@@ -35,6 +48,10 @@ sv ingest /data3/ssharma8/all-models/Images --models amod,qrcode --skip-existing
 
 # Custom run tag for an experiment
 sv ingest /data3/ssharma8/all-models/Images --run-id exp_2026_04_24_cpu
+
+# AMOD-only with a stricter detection threshold (0.5 instead of the runner default)
+sv ingest /data3/ssharma8/datasets/mod2_class/images/test \
+  --models amod --conf 0.5 --run-id mod2_test_amod_c05
 ```
 
 ## query
@@ -90,6 +107,36 @@ sv stats
 # augmentations: 5
 ```
 
+## refresh-metadata
+
+Recompute the `images.metadata` JSON column from the current contents of
+`images`, `augmentations`, `predictions_summary`, `predictions_raw`, and
+`models`. Useful after backfilling data, changing runner settings, or after
+running augmentation pipelines that did not propagate metadata for some reason.
+
+```
+sv refresh-metadata
+  [--run-id STR]      Only refresh images that have predictions for this run
+  [--image-id STR]    Refresh exactly one image_id (overrides --run-id)
+```
+
+### Examples
+
+```bash
+# Refresh metadata for every image touched by run "mod2_test_amod_c05"
+sv refresh-metadata --run-id mod2_test_amod_c05
+
+# Refresh just one image
+sv refresh-metadata --image-id 329acdb6e9850f346b06d04fd73aec48f28d793e5c8...
+
+# Refresh metadata across the entire DB
+sv refresh-metadata
+```
+
+A tqdm bar tracks per-image progress. See
+[Data Model → images.metadata schema](data-model.md#imagesmetadata-json-schema)
+for the JSON layout.
+
 ## faces
 
 Manage the registered-faces lookup used by FR.
@@ -122,10 +169,18 @@ Generate distance-swept versions of each detected object.
 
 ```
 sv augment distance <image_or_folder>
-  --d-max-ft FLOAT            Upper distance threshold in feet (required)
-  --step-ft FLOAT             Distance step in feet (required)
   --sam-checkpoint PATH       SAM .pth checkpoint path (required)
+  [--d-max-ft FLOAT]          Upper distance threshold in feet
+  [--step-ft FLOAT]           Distance step in feet
+  [--step-m FLOAT]            Distance step in meters (alternative to --step-ft;
+                              mutually exclusive)
+  [--n-steps INT]             Run exactly N augmentation steps (overrides
+                              the d-max-ft cap when set)
   [--source-models STR]       Detection sources (default: "amod,fd,qrcode")
+  [--models STR]              Models to re-run on generated images when
+                              --auto-run-oracle is set (default: "amod,qrcode,fd,fr")
+  [--conf FLOAT]              Generic detection confidence threshold override
+                              applied during the auto-run-oracle pass.
   [--run-id STR]              Run tag for auto oracle rerun (default: "augmented")
   [--auto-run-oracle]         Re-run oracles on generated images
   [--d0-ft FLOAT]             Manual initial distance (feet)
@@ -133,6 +188,9 @@ sv augment distance <image_or_folder>
   [--camera TEXT]             Camera profile for calibration fallback (e.g. imx219)
   [--camera-native WxH]       Override camera native mode (e.g. 1640x1232)
 ```
+
+You must provide at least one of `--d-max-ft` or `--n-steps`. Step size is
+required and may be supplied as either `--step-ft` or `--step-m` (only one).
 
 ### Examples
 
@@ -170,6 +228,13 @@ sv augment distance /data3/ssharma8/all-models/Images \
   --d-max-ft 15 --step-ft 1 \
   --camera imx219 --camera-native 1640x1232 \
   --sam-checkpoint /data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
+
+# Fixed N=5 steps using meters with an AMOD-only oracle rerun at conf=0.5
+sv augment distance /data3/ssharma8/datasets/mod2_class/images/test \
+  --step-m 10 --n-steps 5 \
+  --source-models amod --models amod --conf 0.5 \
+  --auto-run-oracle --run-id mod2_test_amod_c05 \
+  --sam-checkpoint /data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth
 ```
 
 ## augment list
@@ -192,9 +257,17 @@ Generate distance augmentation by shrinking the full frame and padding back to o
 
 ```
 sv augment miniaturize <image_or_folder>
-  --d-max-ft FLOAT            Upper distance threshold in feet (required)
-  --step-ft FLOAT             Distance step in feet (required)
+  [--d-max-ft FLOAT]          Upper distance threshold in feet
+  [--step-ft FLOAT]           Distance step in feet
+  [--step-m FLOAT]            Distance step in meters (alternative to --step-ft;
+                              mutually exclusive)
+  [--n-steps INT]             Run exactly N augmentation steps (overrides
+                              the d-max-ft cap when set)
   [--source-models STR]       Detection sources for baseline distance (default: "amod,fd,qrcode")
+  [--models STR]              Models to re-run on generated images when
+                              --auto-run-oracle is set (default: "amod,qrcode,fd,fr")
+  [--conf FLOAT]              Generic detection confidence threshold override
+                              applied during the auto-run-oracle pass.
   [--run-id STR]              Run tag for auto oracle rerun (default: "miniaturized")
   [--auto-run-oracle]         Re-run oracles on generated images
   [--pad-mode STR]            black | replicate | reflect (default: "black")
@@ -203,6 +276,9 @@ sv augment miniaturize <image_or_folder>
   [--camera TEXT]             Camera profile for calibration fallback (e.g. imx219)
   [--camera-native WxH]       Override camera native mode (e.g. 1640x1232)
 ```
+
+You must provide at least one of `--d-max-ft` or `--n-steps`. Step size is
+required and may be supplied as either `--step-ft` or `--step-m` (only one).
 
 ### Examples
 
@@ -222,4 +298,10 @@ sv augment miniaturize /data3/ssharma8/all-models/Images \
 sv augment miniaturize /data3/ssharma8/all-models/Images \
   --d-max-ft 10 --step-ft 1 \
   --d0-ft 5.0 --auto-run-oracle --run-id mini_eval
+
+# Generate exactly 5 miniaturized variants every 10 m, AMOD-only at conf=0.5
+sv augment miniaturize /data3/ssharma8/datasets/mod2_class/images/test \
+  --step-m 10 --n-steps 5 \
+  --source-models amod --models amod --conf 0.5 \
+  --pad-mode black --auto-run-oracle --run-id mod2_test_amod_c05
 ```

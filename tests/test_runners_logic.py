@@ -45,28 +45,24 @@ def test_amod_load_updates_input_spec(monkeypatch) -> None:
     assert runner.model is fake_model
 
 
-def test_qrcode_predict_has_positive_and_negative_paths(tiny_image_bgr: np.ndarray) -> None:
+def test_qrcode_predict_uses_decode_multi(tiny_image_bgr: np.ndarray) -> None:
     runner = QRCodeRunner(weights_path="/tmp/qr.h5", conf_threshold=0.3)
     model = MagicMock()
-    model.predict.return_value = np.array(
-        [
-            [10, 20, 30, 40, 0.8, 0.7, 0.3],
-            [11, 21, 31, 41, 0.2, 0.6, 0.4],
-        ],
-        dtype=np.float32,
-    )
+    model.predict.return_value = np.array([[10, 20, 30, 40, 0.8, 0.7, 0.3]], dtype=np.float32)
     runner.model = model
     runner.input_spec = (64, 64, 1)
+
+    runner.cv_qr = MagicMock()
+    runner.cv_qr.detectAndDecodeMulti.return_value = (
+        True,
+        ["abc", ""],
+        np.array([[[1, 2], [3, 4], [5, 6], [7, 8]]], dtype=np.float32),
+        None,
+    )
     out = runner.predict(tiny_image_bgr, deps={})
     assert out.summary.present is True
-    assert out.summary.count == 1
-    assert len(out.raw["detections"]) == 1
-
-    model.predict.return_value = np.array([[1, 2, 3, 4, 0.2, 0.8, 0.2]], dtype=np.float32)
-    out2 = runner.predict(tiny_image_bgr, deps={})
-    assert out2.summary.present is False
-    assert out2.summary.count == 0
-    assert out2.raw["detections"] == []
+    assert out.summary.count == 2
+    assert out.raw["decoded_texts"] == ["abc"]
 
 
 def test_face_detection_scales_normalized_bboxes(tiny_image_bgr: np.ndarray) -> None:

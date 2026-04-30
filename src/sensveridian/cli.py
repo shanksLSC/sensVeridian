@@ -6,6 +6,7 @@ import uuid
 import typer
 from rich.console import Console
 from rich.table import Table
+from tqdm.auto import tqdm
 
 from .config import SETTINGS
 from .store.duck import DuckStore
@@ -24,6 +25,7 @@ augment_app = typer.Typer(help="Augmentation operations")
 app.add_typer(faces_app, name="faces")
 app.add_typer(augment_app, name="augment")
 console = Console()
+M_TO_FT = 3.28084
 
 
 def _store() -> DuckStore:
@@ -37,17 +39,32 @@ def _registry() -> FaceRegistry:
     return FaceRegistry(redis_url=SETTINGS.redis_url)
 
 
+def _resolve_step_ft(step_ft: Optional[float], step_m: Optional[float]) -> float:
+    if step_ft is not None and step_m is not None:
+        raise typer.BadParameter("Provide only one of --step-ft or --step-m.")
+    if step_ft is None and step_m is None:
+        raise typer.BadParameter("Either --step-ft or --step-m is required.")
+    if step_m is not None:
+        if step_m <= 0:
+            raise typer.BadParameter("--step-m must be > 0.")
+        return float(step_m) * M_TO_FT
+    if step_ft is None or step_ft <= 0:
+        raise typer.BadParameter("--step-ft must be > 0.")
+    return float(step_ft)
+
+
 @app.command("ingest")
 def ingest(
     image_root: Path = typer.Argument(..., exists=True),
     run_id: str = typer.Option("baseline", help="Run identifier."),
     models: str = typer.Option("amod,qrcode,fd,fr", help="Comma-separated model IDs."),
     skip_existing: bool = typer.Option(True, help="Skip images already present for this run."),
+    conf: Optional[float] = typer.Option(None, "--conf", help="Generic detection confidence threshold override."),
 ):
     s = _store()
     try:
         reg = _registry()
-        orch = Orchestrator(store=s, registry=reg)
+        orch = Orchestrator(store=s, registry=reg, conf_threshold=conf)
         selected = {m.strip() for m in models.split(",") if m.strip()}
         res = orch.ingest(image_root=image_root, run_id=run_id, selected_models=selected, skip_existing=skip_existing)
         console.print(f"Ingest complete: seen={res.images_seen}, ingested={res.images_ingested}, writes={res.predictions_written}")
@@ -103,6 +120,21 @@ def stats():
         s.close()
 
 
+@app.command("refresh-metadata")
+def refresh_metadata(
+    run_id: Optional[str] = typer.Option(None, help="Only refresh images that have predictions for this run."),
+    image_id: Optional[str] = typer.Option(None, help="Refresh only one image_id."),
+):
+    s = _store()
+    try:
+        reg = _registry()
+        orch = Orchestrator(store=s, registry=reg)
+        n = orch.refresh_metadata(run_id=run_id, image_id=image_id)
+        console.print(f"Metadata refresh complete. Updated {n} image rows.")
+    finally:
+        s.close()
+
+
 @faces_app.command("seed")
 def faces_seed(
     n: int = typer.Option(8, help="Number of dummy entries."),
@@ -142,9 +174,13 @@ def faces_clear():
 @augment_app.command("distance")
 def augment_distance(
     image_or_folder: Path = typer.Argument(..., exists=True),
-    d_max_ft: float = typer.Option(..., help="Upper distance threshold in feet."),
-    step_ft: float = typer.Option(..., help="Distance step in feet."),
+    d_max_ft: Optional[float] = typer.Option(None, help="Upper distance threshold in feet."),
+    step_ft: Optional[float] = typer.Option(None, help="Distance step in feet."),
+    step_m: Optional[float] = typer.Option(None, help="Distance step in meters."),
+    n_steps: Optional[int] = typer.Option(None, help="Run exactly N augmentation steps (overrides d_max_ft cap)."),
     source_models: str = typer.Option("amod,fd,qrcode", help="Detection sources for object extraction."),
+    models: str = typer.Option("amod,qrcode,fd,fr", help="Comma-separated model IDs for auto-run-oracle reruns."),
+    conf: Optional[float] = typer.Option(None, "--conf", help="Generic detection confidence threshold override."),
     run_id: str = typer.Option("augmented", help="Run id used if auto oracle run is enabled."),
     auto_run_oracle: bool = typer.Option(False, help="Run oracle models on generated images."),
     sam_checkpoint: Path = typer.Option(..., help="Path to SAM checkpoint .pth"),
@@ -170,10 +206,18 @@ def augment_distance(
         help="JSON file with per-image / per-detection manual distance overrides. See docs for schema.",
     ),
 ):
+    step_ft_resolved = _resolve_step_ft(step_ft=step_ft, step_m=step_m)
+    if d_max_ft is not None and d_max_ft <= 0:
+        raise typer.BadParameter("--d-max-ft must be > 0.")
+    if n_steps is not None and n_steps <= 0:
+        raise typer.BadParameter("--n-steps must be > 0.")
+    if d_max_ft is None and n_steps is None:
+        raise typer.BadParameter("Provide --d-max-ft or --n-steps.")
+
     s = _store()
     try:
         reg = _registry()
-        orch = Orchestrator(store=s, registry=reg)
+        orch = Orchestrator(store=s, registry=reg, conf_threshold=conf)
         camera_profile = None
         if camera is not None:
             camera_profile = get_camera_profile(camera)
@@ -197,6 +241,7 @@ def augment_distance(
         out_root = SETTINGS.cache_dir / "augmentations" / f"{run_id}_{uuid.uuid4().hex[:8]}"
         total = 0
         selected = [m.strip() for m in source_models.split(",") if m.strip()]
+        rerun_models = {m.strip() for m in models.split(",") if m.strip()}
 
         if d0_map is not None:
             overrides = DistanceOverrides.from_json(d0_map)
@@ -208,26 +253,29 @@ def augment_distance(
             overrides = DistanceOverrides.empty()
 
         console.print(
-            f"Manual distance: global_ft={overrides.global_ft}, image_entries={len(overrides.images)}"
+            f"Manual distance: global_ft={overrides.global_ft}, image_entries={len(overrides.images)}, step_ft={step_ft_resolved}, n_steps={n_steps}"
         )
         if camera_profile is not None:
             console.print(
                 f"Camera calibration enabled: {camera_profile.name} ({camera_profile.native_w_px}x{camera_profile.native_h_px})"
             )
 
-        for p in roots:
-            if p.suffix.lower() not in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}:
-                continue
+        image_roots = [p for p in roots if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}]
+        bar = tqdm(image_roots, desc=f"augment-distance[{run_id}]", unit="img")
+        for p in bar:
             total += aug.augment_image(
                 image_path=p,
                 run_id=run_id,
                 d_max_ft=d_max_ft,
-                step_ft=step_ft,
+                step_ft=step_ft_resolved,
                 source_models=selected,
                 out_dir=out_root,
                 auto_run_oracle=auto_run_oracle,
                 overrides=overrides,
+                n_steps=n_steps,
+                rerun_models=rerun_models,
             )
+            bar.set_postfix(generated=total, refresh=False)
         console.print(f"Distance augmentation complete. Generated {total} images under {out_root}")
     finally:
         s.close()
@@ -236,9 +284,13 @@ def augment_distance(
 @augment_app.command("miniaturize")
 def augment_miniaturize(
     image_or_folder: Path = typer.Argument(..., exists=True),
-    d_max_ft: float = typer.Option(..., help="Upper distance threshold in feet."),
-    step_ft: float = typer.Option(..., help="Distance step in feet."),
+    d_max_ft: Optional[float] = typer.Option(None, help="Upper distance threshold in feet."),
+    step_ft: Optional[float] = typer.Option(None, help="Distance step in feet."),
+    step_m: Optional[float] = typer.Option(None, help="Distance step in meters."),
+    n_steps: Optional[int] = typer.Option(None, help="Run exactly N augmentation steps (overrides d_max_ft cap)."),
     source_models: str = typer.Option("amod,fd,qrcode", help="Detection sources for baseline distance estimation."),
+    models: str = typer.Option("amod,qrcode,fd,fr", help="Comma-separated model IDs for auto-run-oracle reruns."),
+    conf: Optional[float] = typer.Option(None, "--conf", help="Generic detection confidence threshold override."),
     run_id: str = typer.Option("miniaturized", help="Run id used if auto oracle run is enabled."),
     auto_run_oracle: bool = typer.Option(False, help="Run oracle models on generated images."),
     pad_mode: str = typer.Option(
@@ -268,10 +320,18 @@ def augment_miniaturize(
         help="JSON file with per-image / per-detection manual distance overrides.",
     ),
 ):
+    step_ft_resolved = _resolve_step_ft(step_ft=step_ft, step_m=step_m)
+    if d_max_ft is not None and d_max_ft <= 0:
+        raise typer.BadParameter("--d-max-ft must be > 0.")
+    if n_steps is not None and n_steps <= 0:
+        raise typer.BadParameter("--n-steps must be > 0.")
+    if d_max_ft is None and n_steps is None:
+        raise typer.BadParameter("Provide --d-max-ft or --n-steps.")
+
     s = _store()
     try:
         reg = _registry()
-        orch = Orchestrator(store=s, registry=reg)
+        orch = Orchestrator(store=s, registry=reg, conf_threshold=conf)
 
         camera_profile = None
         if camera is not None:
@@ -295,6 +355,7 @@ def augment_miniaturize(
         out_root = SETTINGS.cache_dir / "augmentations" / f"{run_id}_{uuid.uuid4().hex[:8]}"
         total = 0
         selected = [m.strip() for m in source_models.split(",") if m.strip()]
+        rerun_models = {m.strip() for m in models.split(",") if m.strip()}
 
         if d0_map is not None:
             overrides = DistanceOverrides.from_json(d0_map)
@@ -306,27 +367,30 @@ def augment_miniaturize(
             overrides = DistanceOverrides.empty()
 
         console.print(
-            f"Frame miniaturize: pad_mode={pad_mode}, global_ft={overrides.global_ft}, image_entries={len(overrides.images)}"
+            f"Frame miniaturize: pad_mode={pad_mode}, global_ft={overrides.global_ft}, image_entries={len(overrides.images)}, step_ft={step_ft_resolved}, n_steps={n_steps}"
         )
         if camera_profile is not None:
             console.print(
                 f"Camera calibration enabled: {camera_profile.name} ({camera_profile.native_w_px}x{camera_profile.native_h_px})"
             )
 
-        for p in roots:
-            if p.suffix.lower() not in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}:
-                continue
+        image_roots = [p for p in roots if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}]
+        bar = tqdm(image_roots, desc=f"augment-miniaturize[{run_id}]", unit="img")
+        for p in bar:
             total += mini.augment_image(
                 image_path=p,
                 run_id=run_id,
                 d_max_ft=d_max_ft,
-                step_ft=step_ft,
+                step_ft=step_ft_resolved,
                 source_models=selected,
                 out_dir=out_root,
                 auto_run_oracle=auto_run_oracle,
                 overrides=overrides,
                 pad_mode=pad_mode,
+                n_steps=n_steps,
+                rerun_models=rerun_models,
             )
+            bar.set_postfix(generated=total, refresh=False)
         console.print(f"Frame miniaturization complete. Generated {total} images under {out_root}")
     finally:
         s.close()
