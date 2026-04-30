@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS images (
   height INTEGER,
   ingested_at TIMESTAMP DEFAULT now()
 );
+ALTER TABLE images ADD COLUMN IF NOT EXISTS metadata JSON;
 
 CREATE TABLE IF NOT EXISTS models (
   model_id VARCHAR PRIMARY KEY,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 import cv2
 import numpy as np
 
@@ -206,13 +207,15 @@ class FrameMiniaturizer:
         self,
         image_path: Path,
         run_id: str,
-        d_max_ft: float,
+        d_max_ft: Optional[float],
         step_ft: float,
         source_models: list[str],
         out_dir: Path,
         auto_run_oracle: bool = False,
         overrides: DistanceOverrides | None = None,
         pad_mode: str = "black",
+        n_steps: Optional[int] = None,
+        rerun_models: set[str] | None = None,
     ) -> int:
         overrides = overrides or DistanceOverrides.empty()
         image_id, _, _ = hash_decoded_image(image_path)
@@ -241,7 +244,15 @@ class FrameMiniaturizer:
         out_dir.mkdir(parents=True, exist_ok=True)
         steps_written = 0
         delta = float(step_ft)
-        while d0_ft + delta <= d_max_ft + 1e-6:
+        step_index = 0
+        while True:
+            if n_steps is not None and step_index >= n_steps:
+                break
+            if n_steps is None:
+                if d_max_ft is None:
+                    raise ValueError("d_max_ft is required when n_steps is not set")
+                if d0_ft + delta > d_max_ft + 1e-6:
+                    break
             scale = scale_for_distance_shift(d0_ft=d0_ft, delta_ft=delta)
             canvas = miniaturize_frame(image_bgr, scale=scale, pad_mode=pad_mode)
             tag = f"{image_path.stem}_mini_dist_{delta:.2f}ft".replace(".", "p")
@@ -268,12 +279,14 @@ class FrameMiniaturizer:
             )
             steps_written += 1
             delta += step_ft
+            step_index += 1
 
         if auto_run_oracle and steps_written > 0:
             self.orchestrator.ingest(
                 image_root=out_dir,
                 run_id=run_id,
-                selected_models={"amod", "qrcode", "fd", "fr"},
+                selected_models=rerun_models or {"amod", "qrcode", "fd", "fr"},
                 skip_existing=False,
+                progress_leave=False,
             )
         return steps_written

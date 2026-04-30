@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 import uuid
 import cv2
 import numpy as np
@@ -190,13 +191,15 @@ class DistanceAugmentor:
         self,
         image_path: Path,
         run_id: str,
-        d_max_ft: float,
+        d_max_ft: Optional[float],
         step_ft: float,
         source_models: list[str],
         out_dir: Path,
         auto_run_oracle: bool = False,
         apply_effects: bool = True,
         overrides: DistanceOverrides | None = None,
+        n_steps: Optional[int] = None,
+        rerun_models: set[str] | None = None,
     ) -> int:
         overrides = overrides or DistanceOverrides.empty()
         image_id, _, _ = hash_decoded_image(image_path)
@@ -217,12 +220,20 @@ class DistanceAugmentor:
         out_dir.mkdir(parents=True, exist_ok=True)
 
         steps_written = 0
-        delta = step_ft
+        delta = float(step_ft)
+        step_index = 0
         max_d0 = max(o.depth_ft for o in objects)
         n_manual = sum(1 for o in objects if o.depth_source == "manual")
         n_calib = sum(1 for o in objects if o.depth_source == "calib")
         n_zoe = len(objects) - n_manual - n_calib
-        while max_d0 + delta <= d_max_ft + 1e-6:
+        while True:
+            if n_steps is not None and step_index >= n_steps:
+                break
+            if n_steps is None:
+                if d_max_ft is None:
+                    raise ValueError("d_max_ft is required when n_steps is not set")
+                if max_d0 + delta > d_max_ft + 1e-6:
+                    break
             canvas = plate.copy()
             sort_idx = depth_sort_indices([o.depth_ft for o in objects], delta)
             for idx in sort_idx:
@@ -255,8 +266,15 @@ class DistanceAugmentor:
             )
             steps_written += 1
             delta += step_ft
+            step_index += 1
 
         if auto_run_oracle and steps_written > 0:
-            self.orchestrator.ingest(image_root=out_dir, run_id=run_id, selected_models={"amod", "qrcode", "fd", "fr"}, skip_existing=False)
+            self.orchestrator.ingest(
+                image_root=out_dir,
+                run_id=run_id,
+                selected_models=rerun_models or {"amod", "qrcode", "fd", "fr"},
+                skip_existing=False,
+                progress_leave=False,
+            )
         return steps_written
 

@@ -62,7 +62,24 @@ For each distance step `d` from initial `d0` to `d_max`:
 
 ### 6. Oracle Re-run (Optional)
 
-Set `--auto-run-oracle` to re-run all oracle models on each augmented image. Creates a **distance vs. accuracy dataset** automatically.
+Set `--auto-run-oracle` to re-run oracle models on each augmented image. Creates a **distance vs. accuracy dataset** automatically.
+
+By default the rerun executes all four models (`amod`, `qrcode`, `fd`, `fr`).
+You can narrow this with `--models` (e.g. `--models amod`) and override the
+detection confidence threshold with the generic `--conf` flag — the same flag
+honored by `sv ingest`. Both flags are model-agnostic; `--conf` is applied to
+any runner that exposes a `conf_threshold` attribute.
+
+## Step Cap and Step Size
+
+Steps can be capped two ways and either is sufficient:
+
+- `--d-max-ft FLOAT` — stop once `d0 + delta_ft > d-max-ft`
+- `--n-steps INT` — run exactly N steps regardless of distance
+
+The step size itself can be specified in feet (`--step-ft`) or meters
+(`--step-m`); the two are mutually exclusive. The miniaturize and distance
+sweep CLIs share these flags.
 
 ## Specifying Initial Distance
 

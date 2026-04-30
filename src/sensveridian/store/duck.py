@@ -49,6 +49,16 @@ class DuckStore:
             [image_id, path, width, height],
         )
 
+    def upsert_image_metadata(self, image_id: str, metadata: dict) -> None:
+        self.con.execute(
+            """
+            UPDATE images
+            SET metadata = ?::JSON
+            WHERE image_id = ?
+            """,
+            [json.dumps(metadata), image_id],
+        )
+
     def upsert_model(self, model_id: str, display_name: str, version: str, weights_path: str, weights_sha: str) -> None:
         self.con.execute(
             """
