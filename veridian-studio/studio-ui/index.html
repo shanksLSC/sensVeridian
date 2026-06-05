@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://shanksLSC.github.io/sensVeridian/getting-started/architecture/">
+        <link rel="canonical" href="https://shanksLSC.github.io/sensVeridian/veridian-studio/studio-ui/">
       
       
-        <link rel="prev" href="../quickstart/">
+        <link rel="prev" href="../backend/">
       
       
-        <link rel="next" href="../../user-guide/features/">
+        <link rel="next" href="../postprocessors/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Architecture - sensVeridian</title>
+        <title>Running the Studio UI - sensVeridian</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#architecture" class="md-skip">
+        <a href="#running-the-studio-ui" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Architecture
+              Running the Studio UI
             
           </span>
         </div>
@@ -284,20 +284,20 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -318,7 +318,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -336,7 +336,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -364,7 +364,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
         
   
   
@@ -389,37 +389,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Architecture
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
         
   
   
@@ -435,81 +408,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#data-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Data Flow
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#storage-tiers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Storage Tiers
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#distance-augmentation-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Distance Augmentation Pipeline
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dependencies-topological-order" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dependencies &amp; Topological Order
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#redis-modes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Redis Modes
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1170,20 +1068,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
@@ -1204,7 +1102,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1222,7 +1120,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../veridian-studio/backend/" class="md-nav__link">
+      <a href="../backend/" class="md-nav__link">
         
   
   
@@ -1247,10 +1145,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../veridian-studio/studio-ui/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running the Studio UI
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1266,6 +1191,70 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#launch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Launch
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ingest-a-folder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ingest a folder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Review
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-runs-where" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What runs where
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1278,7 +1267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../veridian-studio/postprocessors/" class="md-nav__link">
+      <a href="../postprocessors/" class="md-nav__link">
         
   
   
@@ -1360,10 +1349,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#data-flow" class="md-nav__link">
+  <a href="#launch" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Data Flow
+        Launch
       
     </span>
   </a>
@@ -1371,10 +1360,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#storage-tiers" class="md-nav__link">
+  <a href="#ingest-a-folder" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Storage Tiers
+        Ingest a folder
       
     </span>
   </a>
@@ -1382,10 +1371,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#distance-augmentation-pipeline" class="md-nav__link">
+  <a href="#review" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Distance Augmentation Pipeline
+        Review
       
     </span>
   </a>
@@ -1393,21 +1382,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dependencies-topological-order" class="md-nav__link">
+  <a href="#what-runs-where" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Dependencies &amp; Topological Order
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#redis-modes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Redis Modes
+        What runs where
       
     </span>
   </a>
@@ -1434,107 +1412,53 @@
   
 
 
-<h1 id="architecture">Architecture</h1>
-<h2 id="data-flow">Data Flow</h2>
-<div class="highlight"><pre><span></span><code>Images (folder)
-    ↓
-Orchestrator.ingest()
-    ├─ Compute image_id (SHA256 of pixels)
-    ├─ Register models &amp; run
-    └─ For each image:
-        ├─ AMOD → detections
-        ├─ QRCode → detections + decoded text
-        ├─ FaceDetection → detections + crops
-        └─ FaceRecognition (depends on FD):
-            └─ Match crops against FaceRegistry (Redis/file)
-    ↓
-DuckDB Store
-    ├─ predictions_summary (present, count, extras)
-    ├─ predictions_raw (JSON payloads)
-    └─ v_image_summary_wide (pivoted view)
+<h1 id="running-the-studio-ui">Running the Studio UI</h1>
+<p>The Veridian Studio front-end is served by the backend at <code>/studio</code>. From there
+you pick a folder of images (or videos) on disk, run the oracle models, watch
+live progress, and review the predictions on the real images.</p>
+<h2 id="launch">Launch</h2>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[api]&quot;</span>
+cp<span class="w"> </span>.env.example<span class="w"> </span>.env<span class="w">            </span><span class="c1"># set DATABASE_URL, VERIDIAN_DATASETS_ROOT, ...</span>
+psql<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DATABASE_URL_SYNC</span><span class="s2">&quot;</span><span class="w"> </span>-f<span class="w"> </span>src/sensveridian/store/schema_pg.sql
+uvicorn<span class="w"> </span>sensveridian.api.main:app<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
 </code></pre></div>
-<h2 id="storage-tiers">Storage Tiers</h2>
-<table>
-<thead>
-<tr>
-<th>Tier</th>
-<th>Storage</th>
-<th>Purpose</th>
-<th>Query</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Summary</strong></td>
-<td>DuckDB <code>predictions_summary</code></td>
-<td>Fast aggregates (present, count)</td>
-<td><code>SELECT model_id, present, count FROM predictions_summary</code></td>
-</tr>
-<tr>
-<td><strong>Raw</strong></td>
-<td>DuckDB <code>predictions_raw</code></td>
-<td>Full detections, embeddings, decoded text</td>
-<td><code>SELECT payload FROM predictions_raw WHERE model_id='fr'</code></td>
-</tr>
-<tr>
-<td><strong>Registry</strong></td>
-<td>Redis (+ file fallback)</td>
-<td>Face embeddings for matching</td>
-<td><code>FaceRegistry.match(embedding, threshold=0.5)</code></td>
-</tr>
-</tbody>
-</table>
-<h2 id="distance-augmentation-pipeline">Distance Augmentation Pipeline</h2>
-<div class="highlight"><pre><span></span><code>Image + Detections (from oracle run)
-    ↓
-1. ZoeDepth Estimation
-   └─ Monocular metric depth (meters → feet)
-    ↓
-2. SAM Segmentation
-   └─ Precise object masks from bboxes
-    ↓
-3. LaMa Inpainting
-   └─ Photorealistic background plate
-    ↓
-4. Distance Sweep Loop
-   ├─ For each distance step d ∈ [d₀, d_max]:
-   │   ├─ Scale objects by d₀/d (perspective)
-   │   ├─ Depth-sort and composite onto plate
-   │   ├─ Apply DoF + atmospheric effects
-   │   └─ Save augmented image
-   ↓
-5. Optional Oracle Re-run
-   └─ Run models on augmented images
-    ↓
-Database: augmentations, image_depth_stats, image_bg_plates
-</code></pre></div>
-<h2 id="dependencies-topological-order">Dependencies &amp; Topological Order</h2>
-<div class="highlight"><pre><span></span><code>┌─────────┐
-│  AMOD   │ (no deps)
-│ QRCode  │ (no deps)
-└────┬────┘
-     │
-     └──→ ┌──────────┐
-          │    FD    │ (no deps, but provides crops)
-          └────┬─────┘
-               │
-               └──→ ┌──────────┐
-                    │    FR    │ (depends on FD for crops)
-                    └──────────┘
-</code></pre></div>
-<h2 id="redis-modes">Redis Modes</h2>
+<p>Open <strong>http://localhost:8000/studio</strong>. The storage badge (bottom-left) shows the
+live PostgreSQL connection and <code>api: rest</code>.</p>
+<h2 id="ingest-a-folder">Ingest a folder</h2>
+<ol>
+<li><strong>New source → Local dataset folder</strong>. The picker lists folders under
+   <code>VERIDIAN_DATASETS_ROOT</code> (default <code>/data3/ssharma8/datasets</code>) with image/video
+   counts.</li>
+<li>Select one or more folders. For each, choose the models to run (AMOD / QR /
+   FD / FR) and a max-images cap (default 200, adjustable). Optionally enable
+   <strong>confidence-gated pre-labelling</strong> (auto-accept confident detections into the
+   ground-truth layer).</li>
+<li><strong>Run models.</strong> A live progress view streams the stages
+   (Decoding → Sampling → Auto-labelling → Hash+dedup → Writing to Postgres)
+   over a WebSocket. Images run through the oracle pipeline; videos are
+   frame-split first (OpenCV target-fps sampler).</li>
+<li>On completion, open the new dataset.</li>
+</ol>
+<h2 id="review">Review</h2>
 <ul>
-<li><strong>Redis mode</strong>: Connected to <code>SV_REDIS_URL</code> (default: <code>redis://localhost:6379/0</code>)</li>
-<li>Per-project server: <code>./scripts/redis_start.sh</code></li>
-<li>
-<p>Key schema: <code>face:registered:index</code>, <code>face:registered:&lt;person_id&gt;</code></p>
-</li>
-<li>
-<p><strong>File fallback mode</strong>: If Redis unreachable, uses <code>cache/faces_registry.json</code></p>
-</li>
-<li>Automatic fallback; no configuration needed</li>
-<li>Use <code>./scripts/migrate_faces_to_redis.py</code> to promote entries to Redis</li>
+<li><strong>Grid</strong> shows every ingested image with its agreement, conflicts, and status.</li>
+<li><strong>Canvas</strong> shows the real image with predicted boxes (decoded by the model's
+  interpreter — see <a href="../postprocessors/">Model interpreters</a>), the detections
+  panel, distance sweep, and confidence filter. Accept / reject / edit / flag
+  detections, or verify a whole frame; verdicts persist to the <code>reviews</code> table
+  and form the dataset's ground-truth layer.</li>
 </ul>
+<h2 id="what-runs-where">What runs where</h2>
+<ul>
+<li><strong>API</strong> (FastAPI, async) serves the UI and the read endpoints.</li>
+<li><strong>Ingest worker</strong> runs the synchronous <code>Orchestrator</code> + runners off the event
+  loop (in-process in dev; arq/Redis in production).</li>
+<li><strong>PostgreSQL</strong> stores images (content-addressed by sha-256, with the on-disk
+  <code>path</code>), predictions, reviews, and datasets. Raw image bytes are served from
+  the filesystem via <code>/datasets/{id}/images/{imageId}/raw</code>.</li>
+</ul>
+<p>See <a href="../backend/">Backend integration</a> for architecture and the remaining infra
+seams.</p>
 
 
 

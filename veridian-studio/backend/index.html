@@ -16,7 +16,7 @@
         <link rel="prev" href="../../operations/troubleshooting/">
       
       
-        <link rel="next" href="../../api/">
+        <link rel="next" href="../studio-ui/">
       
       
         
@@ -1192,10 +1192,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#the-sync-async-split-the-key-integration-decision" class="md-nav__link">
+  <a href="#the-sync-async-split" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The sync / async split (the key integration decision)
+        The sync / async split
       
     </span>
   </a>
@@ -1204,6 +1204,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#raw-data-store-the-local-filesystem-no-s3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raw data store: the local filesystem (no S3)
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1219,10 +1230,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#detection-fusion" class="md-nav__link">
+  <a href="#local-folder-ingest-images-videos" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Detection fusion
+        Local-folder ingest (images + videos)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-catalogue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model catalogue
       
     </span>
   </a>
@@ -1252,6 +1274,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#detection-decoding-per-model-interpreters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detection decoding — per-model interpreters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#remaining-seams-require-live-infrastructure" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1266,6 +1299,62 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../studio-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running the Studio UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../postprocessors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Interpreters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1344,10 +1433,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#the-sync-async-split-the-key-integration-decision" class="md-nav__link">
+  <a href="#the-sync-async-split" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The sync / async split (the key integration decision)
+        The sync / async split
       
     </span>
   </a>
@@ -1356,6 +1445,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#raw-data-store-the-local-filesystem-no-s3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raw data store: the local filesystem (no S3)
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1371,10 +1471,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#detection-fusion" class="md-nav__link">
+  <a href="#local-folder-ingest-images-videos" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Detection fusion
+        Local-folder ingest (images + videos)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-catalogue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model catalogue
       
     </span>
   </a>
@@ -1397,6 +1508,17 @@
     <span class="md-ellipsis">
       
         Endpoints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#detection-decoding-per-model-interpreters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detection decoding — per-model interpreters
       
     </span>
   </a>
@@ -1436,108 +1558,95 @@
 
 <h1 id="veridian-studio-backend">Veridian Studio backend</h1>
 <p>The Veridian Studio backend is a thin FastAPI layer over the existing
-sensVeridian pipeline. The studio front-end talks to one async interface
-(<code>window.VeridianAPI</code>); flipping <code>window.VERIDIAN_CONFIG.backend</code> to <code>"rest"</code>
-points it at this API. No UI code changes — only the adapter switches.</p>
-<p>This page documents how the design handoff was integrated into this repository.</p>
+sensVeridian pipeline. The studio front-end is <strong>served by the backend</strong> at
+<code>/studio</code> and talks to it over REST + WebSocket. You pick a folder of images (or
+videos) on disk, run the oracle models, watch progress, and review the
+predictions on the real images — all backed by PostgreSQL.</p>
 <h2 id="architecture">Architecture</h2>
-<div class="highlight"><pre><span></span><code> Veridian Studio (browser)            FastAPI app (sensveridian.api)
-   window.VeridianAPI  ──HTTP/WS──▶     routers ──▶ AsyncPgStore  ─┐
-                                        WS /ws/jobs ◀── progress    │
-                                                                    ▼
-                                   ingest worker (sensveridian.ingest)
-                                     OpenCV frame sampler            PostgreSQL
-                                     Orchestrator + runners  ──▶ PgStore (sync)
+<div class="highlight"><pre><span></span><code> Veridian Studio (browser, served at /studio)        FastAPI app (sensveridian.api)
+   window.VeridianAPI (REST)  ──HTTP──▶  routers ──▶ AsyncPgStore (asyncpg)  ─┐
+   hydrate.js fills window.VD            /studio static mount                  │
+                            ◀──WS /ws/jobs── progress                          ▼
+                                   ingest worker (sensveridian.ingest)   PostgreSQL
+                                     OpenCV frame sampler (videos)
+                                     Orchestrator + runners  ──▶ PgStore (sync, psycopg)
+                                     reads images from VERIDIAN_DATASETS_ROOT
 </code></pre></div>
-<h3 id="the-sync-async-split-the-key-integration-decision">The sync / async split (the key integration decision)</h3>
-<p>The handoff scaffold made a single <code>PgStore</code> fully <code>async</code>. The existing
-<code>Orchestrator</code> is <strong>synchronous</strong> — it calls <code>store.query_df(sql)</code> and consumes
-a pandas <code>DataFrame</code>, and writes via synchronous <code>upsert_*</code> calls — so it cannot
-use an async store unchanged. Rather than rewrite the Orchestrator, the
-integration splits responsibilities by layer:</p>
+<h3 id="the-sync-async-split">The sync / async split</h3>
+<p>The <code>Orchestrator</code> is <strong>synchronous</strong> (it calls <code>store.query_df(sql)</code> and
+consumes a pandas <code>DataFrame</code>), so it cannot use an async store unchanged. The
+integration splits by layer:</p>
 <table>
 <thead>
 <tr>
 <th>Layer</th>
 <th>Store</th>
 <th>Driver</th>
-<th>Why</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>API request handlers (I/O bound, on the event loop)</td>
+<td>API request handlers (on the event loop)</td>
 <td><code>sensveridian.store.pg_async.AsyncPgStore</code></td>
 <td><code>asyncpg</code></td>
-<td>non-blocking reads/writes for the UI</td>
 </tr>
 <tr>
 <td>Ingest worker / <code>Orchestrator</code> (blocking CPU/GPU)</td>
 <td><code>sensveridian.store.pg.PgStore</code></td>
 <td><code>psycopg</code> (sync)</td>
-<td>keeps the Orchestrator unchanged, off the event loop</td>
 </tr>
 </tbody>
 </table>
-<p>Both target the same schema (<code>store/schema_pg.sql</code>). <code>PgStore</code> mirrors every
-<code>DuckStore</code> method name and signature (<code>ensure_run</code>, <code>upsert_image</code>,
-<code>upsert_image_metadata</code>, <code>upsert_model</code>, <code>upsert_summary</code>, <code>upsert_raw</code>,
-<code>insert_augmentation</code>, <code>upsert_depth_stat</code>, <code>query_df</code>, <code>migrate</code>, <code>close</code>, …),
-so <code>Orchestrator(store=PgStore(...), registry=...)</code> works with no Orchestrator
-changes.</p>
+<p><code>PgStore</code> mirrors every <code>DuckStore</code> method, so <code>Orchestrator(store=PgStore(...))</code>
+runs with no Orchestrator changes.</p>
+<h2 id="raw-data-store-the-local-filesystem-no-s3">Raw data store: the local filesystem (no S3)</h2>
+<p>Media lives on disk under <code>VERIDIAN_DATASETS_ROOT</code> (default
+<code>/data3/ssharma8/datasets</code>). <code>images.image_id</code> stays the sha-256 of the decoded
+pixels (content-addressed dedup); the filesystem <code>path</code> is stored and indexed,
+and <code>GET /datasets/{id}/images/{imageId}/raw</code> serves the bytes from it
+(validated to live under the datasets/frames roots).</p>
 <h2 id="layout">Layout</h2>
 <div class="highlight"><pre><span></span><code>src/sensveridian/
-├── store/
-│   ├── duck.py             # existing DuckDB store (unchanged)
-│   ├── pg.py               # NEW sync PgStore (DuckStore-compatible) — worker/Orchestrator
-│   ├── pg_async.py         # NEW async read/build store — API
-│   └── schema_pg.sql       # NEW canonical PostgreSQL DDL
-├── api/                    # NEW FastAPI app
-│   ├── main.py             # app + CORS + routers + WS
-│   ├── config.py           # settings (reuses sensveridian.config)
-│   ├── db.py               # async engine/session
-│   ├── deps.py             # store + bearer-auth dependencies
-│   ├── schemas.py          # Pydantic request/response models
-│   ├── fusion.py           # detection fusion (pred ↔ ground truth) — pure
-│   ├── classmaps.py        # model/class metadata — pure
-│   ├── lint.py             # label-lint health check — pure
-│   ├── importers.py        # COCO/YOLO/CSV/VOC parsers — pure
-│   └── routers/            # datasets, models, reviews, ingest, lineage, connections
+├── store/{pg.py (sync), pg_async.py (async), schema_pg.sql}
+├── api/
+│   ├── main.py            # app + CORS + routers + WS + /studio static mount + model-seed lifespan
+│   ├── config.py          # settings (datasets_root, studio_dir, max_ingest_images, ...)
+│   ├── fusion.py / classmaps.py / lint.py / importers.py   # pure logic
+│   ├── routers/{datasets,models,reviews,ingest,lineage,connections,fs}.py
+│   └── studio/            # the bundled no-build front-end (served at /studio)
 ├── ingest/
-│   ├── frames.py           # OpenCV target-fps stride sampler (dataset-generator convention)
-│   └── worker.py           # auto-label worker: Orchestrator + sync PgStore + WS progress
-└── runners/
-    └── aed.py              # NEW AcousticEventDetection runner (audio modality)
+│   ├── kinds.py           # image/video extensions + discovery (stdlib only)
+│   ├── frames.py          # OpenCV target-fps stride sampler (dataset-generator convention)
+│   └── worker.py          # local-source ingest: images + videos -&gt; models -&gt; Postgres + WS
+└── runners/aed.py
 </code></pre></div>
-<h2 id="detection-fusion">Detection fusion</h2>
-<p><code>GET /datasets/{id}/images/{imageId}</code> returns the merged pred↔ground-truth view
-the canvas renders. The logic lives in <code>api/fusion.py</code> (pure, unit-tested) and
-handles the <strong>actual</strong> runner payload shapes:</p>
+<h2 id="local-folder-ingest-images-videos">Local-folder ingest (images + videos)</h2>
+<p><code>POST /ingest/jobs</code> with <code>source:"local"</code> and groups carrying a <code>path</code> (relative
+to the datasets root), <code>models</code>, <code>maxImages</code>, and <code>kind</code>:</p>
 <ul>
-<li><strong>AMOD / QR / FD</strong> detections come from <code>payload["detections"]</code>; <strong>FR</strong> identities
-  come from <code>payload["recognized"]</code> (<code>matched_person_id</code> / <code>score</code>).</li>
-<li><strong>FD/FR</strong> boxes are absolute pixels; <strong>AMOD/QR</strong> boxes are auto-detected
-  (normalized vs pixels). All are normalized to <code>[x, y, w, h]</code> in <code>0..1</code>.</li>
-<li>State (<code>match</code> / <code>miss</code> / <code>fp</code> / <code>mismatch</code>) and <code>agreement</code> / <code>conflicts</code>
-  match the front-end reference (<code>design_reference/app/data.js</code>).</li>
-<li>With no ground-truth layer yet, predictions are treated as provisional ground
-  truth (the auto-label semantic), so a freshly ingested set is not shown as
-  "all false positives".</li>
+<li><strong>Images</strong> — the first <code>maxImages</code> files are symlink-staged into a per-run dir
+  (so the model weights hash once) and <code>Orchestrator.ingest</code> runs over them.</li>
+<li><strong>Videos</strong> — sampled to frames with the OpenCV target-fps stride sampler, then
+  <code>Orchestrator.ingest</code> runs over the frames.</li>
+<li>Each frame is dataset-tagged; with a <code>trustThreshold</code>, confident detections
+  are auto-accepted into the ground-truth layer; the summary matview is
+  refreshed. Progress streams over <code>WS /ws/jobs/{jobId}</code> (in-process in dev;
+  Redis pub/sub under arq in prod).</li>
 </ul>
+<h2 id="model-catalogue">Model catalogue</h2>
+<p>A FastAPI lifespan hook seeds the <code>models</code> + <code>model_versions</code> tables from the
+static model cards + <code>sensveridian.config.MODELS</code> (no TensorFlow import), so
+<code>/models</code> and the ingest model picker work before any ingest.</p>
 <h2 id="running">Running</h2>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[api]&quot;</span><span class="w">          </span><span class="c1"># FastAPI, async + sync Postgres drivers, arq</span>
-cp<span class="w"> </span>.env.example<span class="w"> </span>.env<span class="w">             </span><span class="c1"># set DATABASE_URL, SV_REDIS_URL, media/frames roots</span>
-
-<span class="c1"># apply the schema (canonical path)</span>
-psql<span class="w"> </span><span class="s2">&quot;postgresql://veridian:veridian@localhost:5432/sensveridian&quot;</span><span class="w"> </span>-f<span class="w"> </span>src/sensveridian/store/schema_pg.sql
-
-uvicorn<span class="w"> </span>sensveridian.api.main:app<span class="w"> </span>--reload<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
-
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[api]&quot;</span><span class="w">          </span><span class="c1"># FastAPI, asyncpg + psycopg drivers, arq</span>
+cp<span class="w"> </span>.env.example<span class="w"> </span>.env<span class="w">             </span><span class="c1"># DATABASE_URL, VERIDIAN_DATASETS_ROOT, ...</span>
+psql<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DATABASE_URL_SYNC</span><span class="s2">&quot;</span><span class="w"> </span>-f<span class="w"> </span>src/sensveridian/store/schema_pg.sql
+uvicorn<span class="w"> </span>sensveridian.api.main:app<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
+<span class="c1"># open the UI:</span>
+xdg-open<span class="w"> </span>http://localhost:8000/studio
 <span class="c1"># ingest worker (prod, Redis-backed). Dev runs in-process — no worker needed.</span>
 <span class="nv">VERIDIAN_USE_ARQ</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>arq<span class="w"> </span>sensveridian.ingest.worker.WorkerSettings
 </code></pre></div>
-<p>Point the studio at <code>http://localhost:8000/api/v1</code>
-(<code>window.VERIDIAN_CONFIG.backend = "rest"</code>).</p>
 <h2 id="endpoints">Endpoints</h2>
 <table>
 <thead>
@@ -1550,18 +1659,28 @@ uvicorn<span class="w"> </span>sensveridian.api.main:app<span class="w"> </span>
 <tbody>
 <tr>
 <td>GET</td>
-<td><code>/datasets</code></td>
-<td><code>datasets</code> + per-image rollups</td>
+<td><code>/fs/datasets</code> · <code>/fs/browse</code></td>
+<td>folders under the datasets root (picker)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/ingest/jobs</code> · GET <code>/ingest/jobs/{id}</code></td>
+<td>local ingest (images/videos) + worker</td>
+</tr>
+<tr>
+<td>WS</td>
+<td><code>/ws/jobs/{jobId}</code></td>
+<td>worker progress</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/datasets/{id}</code></td>
-<td>dataset + images/clips (paginated)</td>
+<td><code>/datasets</code> · <code>/datasets/{id}</code></td>
+<td>datasets + batched grid (images + fused detections + <code>src</code>)</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/datasets/{id}/images/{imageId}</code></td>
-<td><code>images</code> + <code>predictions_raw</code> + GT → <code>Detection[]</code></td>
+<td><code>/datasets/{id}/images/{imageId}</code> · <code>/raw</code></td>
+<td>fused detections · raw image bytes</td>
 </tr>
 <tr>
 <td>GET</td>
@@ -1570,13 +1689,8 @@ uvicorn<span class="w"> </span>sensveridian.api.main:app<span class="w"> </span>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/datasets/{id}/clips/{clipId}</code></td>
-<td><code>clips</code> + <code>segments</code></td>
-</tr>
-<tr>
-<td>GET</td>
-<td><code>/datasets/{id}/layers</code></td>
-<td><code>layers</code></td>
+<td><code>/datasets/{id}/clips/{clipId}</code> · <code>/layers</code></td>
+<td>audio clips · layers</td>
 </tr>
 <tr>
 <td>POST</td>
@@ -1585,65 +1699,80 @@ uvicorn<span class="w"> </span>sensveridian.api.main:app<span class="w"> </span>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/models</code> · <code>/models/{id}/regressions</code></td>
-<td><code>models</code> + <code>model_versions</code></td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/models/{id}/versions/{v}:promote</code></td>
-<td>flip <code>is_current</code></td>
+<td><code>/models</code> · <code>/models/{id}/regressions</code> · POST <code>:promote</code></td>
+<td>model catalogue</td>
 </tr>
 <tr>
 <td>PUT</td>
 <td><code>/reviews/{targetId}</code> · POST <code>/reviews:bulk</code></td>
-<td><code>reviews</code></td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/ingest/jobs</code> · GET <code>/ingest/jobs/{id}</code> · POST <code>/ingest/uploads</code></td>
-<td><code>ingest_jobs</code> + worker</td>
-</tr>
-<tr>
-<td>WS</td>
-<td><code>/ws/jobs/{jobId}</code></td>
-<td>worker progress</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/connections</code></td>
-<td><code>connections</code></td>
+<td>human verdicts</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/lineage</code></td>
-<td>provenance DAG</td>
+<td><code>/lineage</code> · POST <code>/connections</code></td>
+<td>provenance DAG · watched local folder</td>
 </tr>
 </tbody>
 </table>
+<h2 id="detection-decoding-per-model-interpreters">Detection decoding — per-model interpreters</h2>
+<p>Each detection model has a <strong>Python interpreter</strong> that turns its raw head
+tensors into decoded, NMS'd detections — ported from the reference C
+post-processors at <code>/data3/ssharma8/projects/lattice-internal/postptocessors_MLHILS/src</code>.
+They live in <code>sensveridian.postprocessors</code> and are selected by a registry:</p>
+<table>
+<thead>
+<tr>
+<th>model</th>
+<th>interpreter</th>
+<th>head</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>amod</code></td>
+<td><code>multiobject.interpret</code></td>
+<td>FCOS, 6 tensors (3 scales), 8 classes</td>
+</tr>
+<tr>
+<td><code>qrcode</code></td>
+<td><code>qrcode.interpret</code></td>
+<td>4-anchor single-class</td>
+</tr>
+<tr>
+<td><code>fd</code></td>
+<td><code>detection.interpret_face</code></td>
+<td>2-anchor + 5 landmarks</td>
+</tr>
+<tr>
+<td><code>fr</code></td>
+<td><code>embedding</code></td>
+<td>L2-normalized cosine (matched via FaceRegistry)</td>
+</tr>
+</tbody>
+</table>
+<p>The runners call <code>postprocessors.interpret(model_id, outputs, img_w, img_h,
+conf)</code> instead of dumping raw candidates, so the stored boxes are real (decoded
++ NMS). <strong>Convention: every new detection model added for ingestion must
+register an interpreter</strong> in <code>postprocessors.DETECTION_INTERPRETERS</code>; an
+unregistered model raises a clear error. See <code>docs/veridian-studio/postprocessors.md</code>.</p>
+<p>Note: a few header constants (e.g. <code>MOD_MAX_FPGA_OUTPUT</code>, the AMOD class-name
+order) were not shipped with the weights and are calibrated against real outputs
+in <code>postprocessors/constants.py</code>; confirm them against the MLHILS headers when
+available.</p>
 <h2 id="remaining-seams-require-live-infrastructure">Remaining seams (require live infrastructure)</h2>
-<p>These are wired with clear interfaces but need external services or assets to
-exercise fully:</p>
 <ul>
-<li><strong>arq/Redis progress in production.</strong> Dev streams progress over an in-process
-  bus; when running the arq worker out-of-process, the API's WS handler should
-  use <code>worker.redis_progress_stream</code> (subscribes to Redis pub/sub).</li>
-<li><strong>Presigned uploads.</strong> <code>POST /ingest/uploads</code> returns local staging paths;
-  wire to S3 (<code>boto3.generate_presigned_url</code>) for production.</li>
-<li><strong>Connection watchers.</strong> <code>POST /connections</code> records the source; an arq cron /
-  S3-event watcher that auto-creates ingest jobs is a seam.</li>
-<li><strong>AED model weights.</strong> <code>runners/aed.py</code> uses a deterministic energy-based
-  segmenter; <code>load()</code> is the seam for a real acoustic classifier.</li>
-<li><strong>Alembic migrations.</strong> <code>schema_pg.sql</code> is the canonical DDL (apply via <code>psql</code>
-  or <code>PgStore.migrate()</code>); an Alembic env can wrap it for versioned migrations.</li>
-<li><strong>Label ↔ frame matching.</strong> Imported <code>gt_boxes</code> keep the original <code>image_ref</code>;
-  resolving <code>image_id</code> (sha-256) for imported labels against ingested frames is
-  a matching step.</li>
-<li><strong>FR identity names.</strong> <code>AsyncPgStore</code> exposes a <code>name_map</code> hook
-  (<code>person_id → display name</code>) for FR identities; wire it to <code>FaceRegistry</code>.</li>
-<li><strong>Regression version↔run mapping.</strong> <code>/regressions</code> diffs two <em>runs</em>; a
-  <code>model_versions.run_id</code> column would make the version→run mapping explicit.</li>
-<li><strong>Dataset-aggregate memoization.</strong> Exact <code>agreement</code>/<code>conflicts</code> fuse per
-  image; for very large datasets, precompute into a stats table / matview.</li>
+<li><strong>arq/Redis progress in production</strong> — dev streams over an in-process bus; the
+  arq worker publishes to Redis pub/sub (<code>worker.redis_progress_stream</code>).</li>
+<li><strong>Connection watchers</strong> — <code>POST /connections</code> records a watched local folder;
+  a cron/inotify watcher that auto-creates ingest jobs is a seam.</li>
+<li><strong>AED model weights</strong> — <code>runners/aed.py</code> uses an energy-based placeholder;
+  <code>load()</code> is the seam for a real acoustic classifier.</li>
+<li><strong>Alembic migrations</strong> — <code>schema_pg.sql</code> is the canonical DDL; an Alembic env
+  can wrap it for versioned migrations.</li>
+<li><strong>Imported label ↔ frame matching</strong>, <strong>FR identity names</strong> (<code>name_map</code>), and
+  <strong>regression version↔run mapping</strong> are documented hooks in <code>pg_async.py</code>.</li>
+<li><strong>Dataset-aggregate memoization</strong> — exact agreement/conflicts fuse per image;
+  precompute into a stats table for very large datasets.</li>
 </ul>
 
 

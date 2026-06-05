@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://shanksLSC.github.io/sensVeridian/getting-started/architecture/">
+        <link rel="canonical" href="https://shanksLSC.github.io/sensVeridian/veridian-studio/postprocessors/">
       
       
-        <link rel="prev" href="../quickstart/">
+        <link rel="prev" href="../studio-ui/">
       
       
-        <link rel="next" href="../../user-guide/features/">
+        <link rel="next" href="../../api/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Architecture - sensVeridian</title>
+        <title>Model Interpreters - sensVeridian</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#architecture" class="md-skip">
+        <a href="#model-interpreters-post-processors" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Architecture
+              Model Interpreters
             
           </span>
         </div>
@@ -284,20 +284,20 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -318,7 +318,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -336,7 +336,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -364,7 +364,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
         
   
   
@@ -389,37 +389,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Architecture
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
         
   
   
@@ -435,81 +408,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#data-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Data Flow
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#storage-tiers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Storage Tiers
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#distance-augmentation-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Distance Augmentation Pipeline
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dependencies-topological-order" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dependencies &amp; Topological Order
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#redis-modes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Redis Modes
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1170,20 +1068,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
@@ -1204,7 +1102,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1222,7 +1120,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../veridian-studio/backend/" class="md-nav__link">
+      <a href="../backend/" class="md-nav__link">
         
   
   
@@ -1250,7 +1148,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../veridian-studio/studio-ui/" class="md-nav__link">
+      <a href="../studio-ui/" class="md-nav__link">
         
   
   
@@ -1275,10 +1173,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../veridian-studio/postprocessors/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Interpreters
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1294,6 +1219,70 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registry-and-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registry and contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-new-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a new model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#calibration-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Calibration note
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1360,10 +1349,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#data-flow" class="md-nav__link">
+  <a href="#why" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Data Flow
+        Why
       
     </span>
   </a>
@@ -1371,10 +1360,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#storage-tiers" class="md-nav__link">
+  <a href="#registry-and-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Storage Tiers
+        Registry and contract
       
     </span>
   </a>
@@ -1382,10 +1371,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#distance-augmentation-pipeline" class="md-nav__link">
+  <a href="#adding-a-new-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Distance Augmentation Pipeline
+        Adding a new model
       
     </span>
   </a>
@@ -1393,21 +1382,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dependencies-topological-order" class="md-nav__link">
+  <a href="#calibration-note" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Dependencies &amp; Topological Order
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#redis-modes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Redis Modes
+        Calibration note
       
     </span>
   </a>
@@ -1434,107 +1412,52 @@
   
 
 
-<h1 id="architecture">Architecture</h1>
-<h2 id="data-flow">Data Flow</h2>
-<div class="highlight"><pre><span></span><code>Images (folder)
-    ↓
-Orchestrator.ingest()
-    ├─ Compute image_id (SHA256 of pixels)
-    ├─ Register models &amp; run
-    └─ For each image:
-        ├─ AMOD → detections
-        ├─ QRCode → detections + decoded text
-        ├─ FaceDetection → detections + crops
-        └─ FaceRecognition (depends on FD):
-            └─ Match crops against FaceRegistry (Redis/file)
-    ↓
-DuckDB Store
-    ├─ predictions_summary (present, count, extras)
-    ├─ predictions_raw (JSON payloads)
-    └─ v_image_summary_wide (pivoted view)
+<h1 id="model-interpreters-post-processors">Model interpreters (post-processors)</h1>
+<p>Every model invoked for ingestion has a corresponding <strong>interpreter</strong> that turns
+its raw output tensors into understandable results — decoded, NMS'd detection
+boxes (with class + confidence) or, for face recognition, a normalized
+embedding. These are Python ports of the reference C post-processors at
+<code>/data3/ssharma8/projects/lattice-internal/postptocessors_MLHILS/src</code> and live in
+<code>sensveridian.postprocessors</code>.</p>
+<h2 id="why">Why</h2>
+<p>The raw model heads emit anchor/grid candidates (objectness logits, class
+logits, box deltas) — not usable boxes. The interpreter applies the model's
+decode (anchor or FCOS), sigmoid/softmax gating, and non-max suppression, then
+returns normalized detections. Without it the canvas would show hundreds of
+degenerate boxes; with it, boxes land on the objects.</p>
+<h2 id="registry-and-contract">Registry and contract</h2>
+<p><code>sensveridian/postprocessors/__init__.py</code> maps <code>model_id -&gt; interpreter</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">DETECTION_INTERPRETERS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;amod&quot;</span><span class="p">:</span>   <span class="n">multiobject</span><span class="o">.</span><span class="n">interpret</span><span class="p">,</span>      <span class="c1"># FCOS, 6 tensors, 8 classes</span>
+    <span class="s2">&quot;qrcode&quot;</span><span class="p">:</span> <span class="n">qrcode</span><span class="o">.</span><span class="n">interpret</span><span class="p">,</span>           <span class="c1"># 4 anchors, single class</span>
+    <span class="s2">&quot;fd&quot;</span><span class="p">:</span>     <span class="n">detection</span><span class="o">.</span><span class="n">interpret_face</span><span class="p">,</span>   <span class="c1"># 2 anchors + 5 landmarks</span>
+<span class="p">}</span>
 </code></pre></div>
-<h2 id="storage-tiers">Storage Tiers</h2>
-<table>
-<thead>
-<tr>
-<th>Tier</th>
-<th>Storage</th>
-<th>Purpose</th>
-<th>Query</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Summary</strong></td>
-<td>DuckDB <code>predictions_summary</code></td>
-<td>Fast aggregates (present, count)</td>
-<td><code>SELECT model_id, present, count FROM predictions_summary</code></td>
-</tr>
-<tr>
-<td><strong>Raw</strong></td>
-<td>DuckDB <code>predictions_raw</code></td>
-<td>Full detections, embeddings, decoded text</td>
-<td><code>SELECT payload FROM predictions_raw WHERE model_id='fr'</code></td>
-</tr>
-<tr>
-<td><strong>Registry</strong></td>
-<td>Redis (+ file fallback)</td>
-<td>Face embeddings for matching</td>
-<td><code>FaceRegistry.match(embedding, threshold=0.5)</code></td>
-</tr>
-</tbody>
-</table>
-<h2 id="distance-augmentation-pipeline">Distance Augmentation Pipeline</h2>
-<div class="highlight"><pre><span></span><code>Image + Detections (from oracle run)
-    ↓
-1. ZoeDepth Estimation
-   └─ Monocular metric depth (meters → feet)
-    ↓
-2. SAM Segmentation
-   └─ Precise object masks from bboxes
-    ↓
-3. LaMa Inpainting
-   └─ Photorealistic background plate
-    ↓
-4. Distance Sweep Loop
-   ├─ For each distance step d ∈ [d₀, d_max]:
-   │   ├─ Scale objects by d₀/d (perspective)
-   │   ├─ Depth-sort and composite onto plate
-   │   ├─ Apply DoF + atmospheric effects
-   │   └─ Save augmented image
-   ↓
-5. Optional Oracle Re-run
-   └─ Run models on augmented images
-    ↓
-Database: augmentations, image_depth_stats, image_bg_plates
+<p>A <strong>detection interpreter</strong> has the signature:</p>
+<div class="highlight"><pre><span></span><code><span class="n">interpret</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">img_w</span><span class="p">,</span> <span class="n">img_h</span><span class="p">,</span> <span class="n">conf_threshold</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>
+<span class="c1"># each dict: {&quot;bbox&quot;: [x1, y1, x2, y2] normalized 0..1, &quot;conf&quot;: float, &quot;class_id&quot;: int, ...}</span>
 </code></pre></div>
-<h2 id="dependencies-topological-order">Dependencies &amp; Topological Order</h2>
-<div class="highlight"><pre><span></span><code>┌─────────┐
-│  AMOD   │ (no deps)
-│ QRCode  │ (no deps)
-└────┬────┘
-     │
-     └──→ ┌──────────┐
-          │    FD    │ (no deps, but provides crops)
-          └────┬─────┘
-               │
-               └──→ ┌──────────┐
-                    │    FR    │ (depends on FD for crops)
-                    └──────────┘
-</code></pre></div>
-<h2 id="redis-modes">Redis Modes</h2>
-<ul>
-<li><strong>Redis mode</strong>: Connected to <code>SV_REDIS_URL</code> (default: <code>redis://localhost:6379/0</code>)</li>
-<li>Per-project server: <code>./scripts/redis_start.sh</code></li>
-<li>
-<p>Key schema: <code>face:registered:index</code>, <code>face:registered:&lt;person_id&gt;</code></p>
-</li>
-<li>
-<p><strong>File fallback mode</strong>: If Redis unreachable, uses <code>cache/faces_registry.json</code></p>
-</li>
-<li>Automatic fallback; no configuration needed</li>
-<li>Use <code>./scripts/migrate_faces_to_redis.py</code> to promote entries to Redis</li>
-</ul>
+<p>Boxes are normalized against the model input size, so they overlay directly on
+the displayed image regardless of the original resolution. Face recognition
+(<code>fr</code>) uses <code>embedding.interpret_embedding</code> (unit vector) + cosine matching via
+the <code>FaceRegistry</code> instead of a box interpreter.</p>
+<h2 id="adding-a-new-model">Adding a new model</h2>
+<p>When a new detection model is added for ingestion:</p>
+<ol>
+<li>Add a module under <code>sensveridian/postprocessors/</code> (port its post-processor).</li>
+<li>Put its constants (anchors, thresholds, class names) in <code>constants.py</code>.</li>
+<li>Register it in <code>DETECTION_INTERPRETERS</code>.</li>
+<li>Add a class map in <code>sensveridian/api/classmaps.py</code> if it introduces classes.</li>
+</ol>
+<p>An unregistered model raises a clear <code>KeyError</code> at decode time, so the
+requirement is explicit.</p>
+<h2 id="calibration-note">Calibration note</h2>
+<p>The reference C headers (thresholds, <code>MOD_MAX_FPGA_OUTPUT</code>, exact class-name
+order) were not shipped with the <code>.h5</code> weights. The values in <code>constants.py</code> are
+taken from the decoder <code>.c</code> logic and <strong>calibrated against real model outputs</strong>
+(boxes verified to land on objects). Confirm them against the MLHILS headers
+when available — the decode structure is exact; only a few scalar constants are
+calibrated.</p>
 
 
 
