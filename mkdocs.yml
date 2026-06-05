@@ -71,6 +71,8 @@ nav:
       - Environment Variables: operations/environment.md
       - Operational Tips: operations/tips.md
       - Troubleshooting: operations/troubleshooting.md
+  - Veridian Studio:
+      - Backend Integration: veridian-studio/backend.md
   - API: api.md
 
 extra:

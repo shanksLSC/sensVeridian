@@ -31,6 +31,19 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.6", "fakeredis>=2.0"]
+# Veridian Studio backend (FastAPI over the existing pipeline). Install with:
+#   pip install -e ".[api]"
+api = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "sqlalchemy[asyncio]>=2.0",
+  "asyncpg>=0.29",          # async driver for the API read path
+  "psycopg[binary]>=3.1",   # sync driver for the worker's PgStore / Orchestrator
+  "alembic>=1.13",
+  "arq>=0.25",              # ingest worker queue (Redis); optional in dev
+  "pydantic>=2.6",
+  "python-multipart>=0.0.9",
+]
 
 [project.scripts]
 sv = "sensveridian.cli:app"
