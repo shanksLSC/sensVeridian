@@ -3,7 +3,8 @@ from __future__ import annotations
 import cv2
 import numpy as np
 from .base import RunnerOutput, Summary
-from .common import load_sensai_h5_model, preprocess_for_model, as_list_of_arrays, extract_detection_candidates, safe_bbox_xyxy
+from .common import load_sensai_h5_model, preprocess_for_model, as_list_of_arrays, safe_bbox_xyxy
+from ..postprocessors import interpret as interpret_outputs
 
 
 class FaceDetectionRunner:
@@ -30,20 +31,19 @@ class FaceDetectionRunner:
         x = preprocess_for_model(image_bgr, self.input_spec)
         pred = self.model.predict(x, verbose=0)
         outputs = as_list_of_arrays(pred)
-        dets = extract_detection_candidates(outputs, conf_threshold=self.conf_threshold)
+        # Decode via the face-detection interpreter (2-anchor head + landmarks).
+        # Boxes come back normalized; scale to the original image for cropping.
+        dets = interpret_outputs("fd", outputs, self.input_spec[1], self.input_spec[0],
+                                 self.conf_threshold)
         face_dets = []
         face_crops = []
         for d in dets:
-            x1, y1, x2, y2 = d["bbox"]
-            x1 = x1 * (iw / self.input_spec[1]) if x2 <= 1.5 else x1
-            x2 = x2 * (iw / self.input_spec[1]) if x2 <= 1.5 else x2
-            y1 = y1 * (ih / self.input_spec[0]) if y2 <= 1.5 else y1
-            y2 = y2 * (ih / self.input_spec[0]) if y2 <= 1.5 else y2
-            bbox = safe_bbox_xyxy([x1, y1, x2, y2], iw, ih)
+            nx1, ny1, nx2, ny2 = d["bbox"]  # normalized xyxy
+            bbox = safe_bbox_xyxy([nx1 * iw, ny1 * ih, nx2 * iw, ny2 * ih], iw, ih)
             crop = image_bgr[bbox[1] : bbox[3], bbox[0] : bbox[2]]
             if crop.size == 0:
                 continue
-            face_dets.append({"bbox": bbox, "conf": d["conf"]})
+            face_dets.append({"bbox": bbox, "conf": d["conf"], "landmarks": d.get("landmarks")})
             face_crops.append(crop)
         summary = Summary(present=len(face_dets) > 0, count=len(face_dets), extras={"n_FD": len(face_dets)})
         return RunnerOutput(

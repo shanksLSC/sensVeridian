@@ -13,12 +13,13 @@ Dev: ``POST /ingest/jobs`` runs the pipeline in-process (no Redis required).
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 from pathlib import Path
 from typing import AsyncIterator, Callable, Optional
 
 from ..api.config import settings
-from .frames import discover_videos, sample_video
+from .frames import discover_images, discover_videos, sample_video
 
 STAGES = ["Decoding", "Sampling frames", "Auto-labelling", "Hash + dedup", "Writing to Postgres"]
 
@@ -88,17 +89,62 @@ def _arq_enabled() -> bool:
 
 
 # ---- the job (synchronous; runs the real Orchestrator) ---------------------
+def _resolve_source_dir(group: dict, source: str) -> Path:
+    """Resolve a group's source directory, guarding local paths against escapes
+    of the datasets root."""
+    if source == "local" and group.get("path"):
+        root = Path(settings.datasets_root).resolve()
+        base = (root / group["path"]).resolve()
+        if base != root and root not in base.parents:
+            raise ValueError(f"path escapes datasets root: {group.get('path')!r}")
+        return base
+    # video-upload staging convention: {media_root}/{tag}/
+    return Path(settings.media_root) / (group.get("tag") or "")
+
+
+def _plan_group(group: dict, source: str) -> dict:
+    """Decide what to process for a group: sampled video frames or a capped list
+    of images."""
+    base = _resolve_source_dir(group, source)
+    kind = group.get("kind", "auto")
+    max_images = int(group.get("maxImages") or settings.max_ingest_images)
+    videos = discover_videos(base) if kind in ("auto", "video") else []
+    if videos and kind != "image":
+        return {"base": base, "kind": "video", "videos": videos, "images": [], "max_images": max_images}
+    images = discover_images(base, limit=max_images) if kind in ("auto", "image") else []
+    return {"base": base, "kind": "image", "videos": [], "images": images, "max_images": max_images}
+
+
 def run_ingest_sync(job_id: str, spec: dict, emit: Callable[[dict], None]) -> None:
     """The actual pipeline. Synchronous on purpose: the Orchestrator and the
-    sync PgStore do blocking CPU/GPU work and must stay off the event loop."""
+    sync PgStore do blocking CPU/GPU work and must stay off the event loop.
+
+    Handles both local sources: a folder of **images** (cap to maxImages via
+    symlink staging so model weights hash once) and **videos** (the existing
+    OpenCV target-fps sampler). Predictions land in predictions_*; with a
+    trustThreshold, confident detections are auto-accepted into the GT layer.
+    """
     from ..hashing import hash_decoded_image
     from ..orchestrator import Orchestrator
     from ..store.faces_registry import FaceRegistry
     from ..store.pg import PgStore
 
-    total = sum(int(g.get("frames", 0)) for g in spec.get("groups", [])) or 0
+    source = spec.get("source", "local")
     done = 0
     store: Optional[PgStore] = None
+
+    # Plan first so framesTotal/progress are meaningful.
+    plans = []
+    for group in spec.get("groups", []):
+        plan = _plan_group(group, source)
+        plan["group"] = group
+        plan["dataset_id"] = group.get("dataset") or _slug(group.get("label") or group.get("tag"))
+        plan["models"] = set(group.get("models") or [])
+        plans.append(plan)
+    total = sum(
+        len(p["images"]) if p["kind"] == "image" else int(p["group"].get("frames", 0))
+        for p in plans
+    ) or 0
 
     def progress(stage: str, status: str = "running") -> None:
         pct = int(100 * done / total) if total else (100 if status == "done" else 0)
@@ -111,41 +157,55 @@ def run_ingest_sync(job_id: str, spec: dict, emit: Callable[[dict], None]) -> No
         registry = FaceRegistry(settings.redis_url)
         orch = Orchestrator(store, registry)
 
-        for group in spec.get("groups", []):
-            dataset_id = group.get("dataset") or _slug(group.get("label") or group.get("tag"))
-            models = set(group.get("models") or [])
+        for plan in plans:
+            group, dataset_id, models = plan["group"], plan["dataset_id"], plan["models"]
             run_id = "baseline"
             if group.get("isNew"):
                 store.ensure_dataset(dataset_id, group.get("label") or dataset_id,
                                      models=sorted(models), run_id=run_id)
+            progress(STAGES[0])  # Decoding
 
-            # Decoding + Sampling frames (OpenCV target-fps stride sampler)
-            progress(STAGES[0])
-            videos = discover_videos(Path(settings.media_root) / (group.get("tag") or ""))
             frames_dir = Path(settings.frames_root) / job_id / dataset_id
-            sampled: list[Path] = []
-            for v in videos:
-                sampled.extend(
-                    sample_video(v, frames_dir, settings.sample_fps,
-                                 dedup_stride=settings.dedup_stride,
-                                 jpeg_quality=settings.jpeg_quality)
-                )
-            progress(STAGES[1])
+            frames_dir.mkdir(parents=True, exist_ok=True)
+            process_paths: list[Path] = []
 
-            # Auto-labelling: the existing Orchestrator over the sampled frames
-            if sampled:
-                orch.ingest(frames_dir, run_id=run_id, selected_models=models, progress=False)
-            progress(STAGES[2])
+            if plan["kind"] == "video":
+                for v in plan["videos"]:
+                    process_paths.extend(
+                        sample_video(v, frames_dir, settings.sample_fps,
+                                     dedup_stride=settings.dedup_stride,
+                                     jpeg_quality=settings.jpeg_quality)
+                    )
+                progress(STAGES[1])  # Sampling frames
+                if process_paths:
+                    orch.ingest(frames_dir, run_id=run_id, selected_models=models, progress=False)
+            else:
+                # Stage the capped images as symlinks into one dir so the
+                # Orchestrator runs once (and hashes the model weights once).
+                staged_to_src: dict[Path, Path] = {}
+                for i, src in enumerate(plan["images"]):
+                    link = frames_dir / f"{i:06d}_{src.name}"
+                    if not link.exists():
+                        try:
+                            os.symlink(src.resolve(), link)
+                        except FileExistsError:
+                            pass
+                    staged_to_src[link] = src
+                progress(STAGES[1])
+                if staged_to_src:
+                    orch.ingest(frames_dir, run_id=run_id, selected_models=models, progress=False)
+                process_paths = list(staged_to_src.values())  # original paths to store/serve
 
-            # Hash + dedup (exact, sha-256) + dataset assignment + auto-accept
-            for fp in sampled:
+            progress(STAGES[2])  # Auto-labelling
+
+            for fp in process_paths:
                 image_id, w, h = hash_decoded_image(fp)
                 store.upsert_image(image_id, str(fp), w, h, dataset_id=dataset_id)
                 if spec.get("trustThreshold") is not None:
                     _auto_accept(store, dataset_id, image_id, run_id, models,
                                  float(spec["trustThreshold"]))
                 done += 1
-                progress(STAGES[3])
+                progress(STAGES[3])  # Hash + dedup
 
             progress(STAGES[4])  # Writing to Postgres
 

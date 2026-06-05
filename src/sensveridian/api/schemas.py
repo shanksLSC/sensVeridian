@@ -45,6 +45,7 @@ class Image(BaseModel):
     augmented: bool = False
     status: Literal["unreviewed", "verified", "flagged"] = "unreviewed"
     captured: Optional[str] = None
+    src: Optional[str] = None  # URL to the raw image bytes (/datasets/{id}/images/{id}/raw)
     objects: list[Detection] = []
 
 
@@ -115,10 +116,14 @@ class IngestGroup(BaseModel):
     frames: int = 0
     dataset: Optional[str] = None
     isNew: bool = False
+    # local-source fields: a folder under the datasets root + per-run image cap.
+    path: Optional[str] = None            # relative to settings.datasets_root
+    maxImages: Optional[int] = None       # cap images processed (None -> default)
+    kind: Literal["auto", "image", "video"] = "auto"
 
 
 class IngestJobSpec(BaseModel):
-    source: Literal["video", "import", "connection"] = "video"
+    source: Literal["local", "video", "import", "connection"] = "local"
     trustThreshold: Optional[float] = None
     groups: list[IngestGroup] = []
 

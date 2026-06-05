@@ -4,11 +4,12 @@ from __future__ import annotations
 from sensveridian.api import classmaps
 
 
-def test_amod_class_names_cover_six_classes():
-    assert classmaps.class_name("amod", 0) == "car"
-    assert classmaps.class_name("amod", 2) == "person"
-    assert classmaps.class_name("amod", 5) == "stop_sign"
-    assert classmaps.n_classes("amod") == 6
+def test_amod_class_names_cover_eight_classes():
+    # Deployed AMOD head emits 8 classes; index 0 = person (confirmed).
+    assert classmaps.class_name("amod", 0) == "person"
+    assert classmaps.class_name("amod", 1) == "car"
+    assert classmaps.class_name("amod", 7) == "stop_sign"
+    assert classmaps.n_classes("amod") == 8
     # out of range falls back
     assert classmaps.class_name("amod", 99) == "class_99"
 

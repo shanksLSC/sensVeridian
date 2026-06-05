@@ -17,8 +17,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-# AMOD: 6 automotive classes (order = model output class index).
-AMOD_CLASSES: list[str] = ["car", "truck", "person", "bicycle", "traffic_light", "stop_sign"]
+# AMOD: automotive classes (order = model output class index). The deployed
+# head emits 8 classes; this mirrors postprocessors.constants.MOD_CLASS_NAMES.
+AMOD_CLASSES: list[str] = [
+    "person", "car", "truck", "bicycle", "motorcycle", "bus", "traffic_light", "stop_sign",
+]
 
 # AED: acoustic event vocabulary (mirrors design_reference AUDIO_LABELS).
 AED_LABELS: list[str] = ["speech", "music", "siren", "alarm", "keyword", "noise", "silence"]
@@ -50,37 +53,43 @@ def n_classes(model_id: str) -> int:
     }.get(model_id, 0)
 
 
-# Static model cards (display metadata). version is filled from the live runner
-# at seed time; these defaults match the design reference / contract.
+# Static model cards (display metadata + the runner versions, mirrored here so
+# seeding the models table needs no TensorFlow import). Versions match the
+# sensveridian.runners.* class attributes.
 MODEL_CARDS: dict[str, dict] = {
     "amod": {
         "display_name": "AutomotiveMultiObjectDetection",
         "short": "AMOD",
         "input": "320×320×3",
+        "version": "8.2.0",
         "depends_on": None,
     },
     "qrcode": {
         "display_name": "QRCodeDetection",
         "short": "QR",
         "input": "320×320×1",
+        "version": "final",
         "depends_on": None,
     },
     "fd": {
         "display_name": "FaceDetection",
         "short": "FD",
         "input": "320×320×3",
+        "version": "8.1.0",
         "depends_on": None,
     },
     "fr": {
         "display_name": "FaceRecognition",
         "short": "FR",
         "input": "112×112×3",
+        "version": "8.1.1",
         "depends_on": "fd",
     },
     "aed": {
         "display_name": "AcousticEventDetection",
         "short": "AED",
         "input": "16kHz mono",
+        "version": "0.1.0",
         "depends_on": None,
     },
 }
@@ -92,6 +101,7 @@ def model_card(model_id: str) -> dict:
     card.setdefault("display_name", model_id)
     card.setdefault("short", model_id.upper())
     card.setdefault("input", "")
+    card.setdefault("version", "0")
     card.setdefault("depends_on", None)
     card["classes"] = n_classes(model_id)
     return card

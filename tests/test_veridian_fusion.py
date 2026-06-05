@@ -27,9 +27,9 @@ def test_normalize_box_spaces():
 
 def test_extract_amod_and_qr():
     amod = fusion.extract_pred_detections(
-        "amod", {"detections": [{"bbox": [0.3, 0.4, 0.5, 0.6], "conf": 0.9, "class_id": 0}]}, 1000, 800
+        "amod", {"detections": [{"bbox": [0.3, 0.4, 0.5, 0.6], "conf": 0.9, "class_id": 1}]}, 1000, 800
     )
-    assert amod[0]["cls"] == "car" and amod[0]["model"] == "amod"
+    assert amod[0]["cls"] == "car" and amod[0]["model"] == "amod"  # class_id 1 = car
     assert amod[0]["box"] == pytest.approx([0.3, 0.4, 0.2, 0.2])
     assert amod[0]["conf"] == 0.9
 
@@ -72,8 +72,8 @@ def test_fuse_with_gt_match_mismatch_fp_miss():
     preds = {
         "amod": {
             "detections": [
-                {"bbox": [0.30, 0.40, 0.50, 0.60], "conf": 0.9, "class_id": 0},  # car, matches gt0
-                {"bbox": [0.80, 0.80, 0.90, 0.90], "conf": 0.5, "class_id": 1},  # truck, no gt -> fp
+                {"bbox": [0.30, 0.40, 0.50, 0.60], "conf": 0.9, "class_id": 1},  # car, matches gt0
+                {"bbox": [0.80, 0.80, 0.90, 0.90], "conf": 0.5, "class_id": 2},  # truck, no gt -> fp
             ]
         }
     }

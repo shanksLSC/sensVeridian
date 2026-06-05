@@ -44,8 +44,31 @@ pip install -e .
    sv augment distance /path/to/images --d-max-ft 10 --step-ft 1 --auto-run-oracle
    ```
 
+## Veridian Studio (web UI + PostgreSQL backend)
+
+A FastAPI backend + bundled web UI for ingesting local folders, running the
+oracle models, and reviewing predictions on the real images, backed by
+PostgreSQL.
+
+```bash
+pip install -e ".[api]"
+cp .env.example .env            # DATABASE_URL, VERIDIAN_DATASETS_ROOT, ...
+psql "$DATABASE_URL_SYNC" -f src/sensveridian/store/schema_pg.sql
+uvicorn sensveridian.api.main:app --port 8000
+# open the UI:
+xdg-open http://localhost:8000/studio
+```
+
+See `docs/docs/veridian-studio/` — backend integration, running the Studio UI,
+and the per-model output interpreters.
+
 ## Notes
 
-- Model-specific decoding can vary by training/export setup. Runners here are shape-tolerant and store full raw outputs for traceability.
-- Add new models by implementing a new runner under `src/sensveridian/runners/` and registering it in `orchestrator.py`.
+- Detection decoding is handled by per-model interpreters in
+  `src/sensveridian/postprocessors/` (ported from the MLHILS reference
+  post-processors). Each detection model registers an interpreter; FR uses a
+  cosine embedding. See `docs/docs/veridian-studio/postprocessors.md`.
+- Add new models by implementing a runner under `src/sensveridian/runners/`,
+  registering it in `orchestrator.py`, and adding its interpreter to
+  `sensveridian.postprocessors.DETECTION_INTERPRETERS`.
 

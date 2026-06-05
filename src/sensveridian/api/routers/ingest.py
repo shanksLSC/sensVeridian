@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -36,18 +37,19 @@ async def get_job(job_id: str, store: AsyncPgStore = Depends(get_store)):
 
 
 @router.post("/ingest/uploads")
-async def presign_uploads(body: dict, _: None = Depends(require_auth)):
-    """Return presigned PUT URLs for media upload.
+async def stage_uploads(body: dict, _: None = Depends(require_auth)):
+    """Return local staging targets for uploaded media.
 
-    SEAM: wire to S3 (boto3 ``generate_presigned_url``) or a local object store.
-    Until then this returns local staging paths so the flow is exercisable.
+    The raw data store is the local filesystem (no S3): media is staged under
+    ``media_root`` and ingested from there. The primary flow ingests folders
+    already on disk under ``datasets_root`` and needs no upload at all.
     """
     files = body.get("files", [])
     from ..config import settings
 
     return {
         "uploads": [
-            {"key": f, "url": f"file://{settings.media_root}/{f}", "method": "PUT"}
+            {"key": f, "path": str(Path(settings.media_root) / f)}
             for f in files
         ]
     }

@@ -6,8 +6,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from ..config import MODELS, SETTINGS
+
+# Bundled no-build front-end served at /studio (sits next to this package).
+_STUDIO_DIR = Path(__file__).resolve().parent / "studio"
 
 
 def _origins() -> list[str]:
@@ -26,9 +30,18 @@ class Settings:
     redis_url: str = os.getenv("SV_REDIS_URL", SETTINGS.redis_url)
     cors_origins: list[str] = field(default_factory=_origins)
 
+    # raw data store: the local filesystem (no S3). Ingest browses + reads here.
+    datasets_root: str = os.getenv("VERIDIAN_DATASETS_ROOT", "/data3/ssharma8/datasets")
+
     # media + frame storage (keep off /home, per repo convention)
     media_root: str = os.getenv("VERIDIAN_MEDIA_ROOT", "/data3/ssharma8/veridian/media")
     frames_root: str = os.getenv("VERIDIAN_FRAMES_ROOT", "/data3/ssharma8/veridian/frames")
+
+    # bundled front-end (served at /studio)
+    studio_dir: str = os.getenv("VERIDIAN_STUDIO_DIR", str(_STUDIO_DIR))
+
+    # default per-run image cap for a local-folder ingest (UI-adjustable)
+    max_ingest_images: int = int(os.getenv("VERIDIAN_MAX_INGEST_IMAGES", "200"))
 
     # oracle weights / device — reuse sensveridian.config
     models_root: str = os.getenv("SV_MODELS_ROOT", str(MODELS.amod.parents[1]))

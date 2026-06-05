@@ -3,7 +3,8 @@ from __future__ import annotations
 import cv2
 import numpy as np
 from .base import RunnerOutput, Summary
-from .common import load_sensai_h5_model, preprocess_for_model, as_list_of_arrays, extract_detection_candidates
+from .common import load_sensai_h5_model, preprocess_for_model, as_list_of_arrays
+from ..postprocessors import interpret as interpret_outputs
 
 
 class QRCodeRunner:
@@ -30,7 +31,9 @@ class QRCodeRunner:
         x = preprocess_for_model(image_bgr, self.input_spec)
         pred = self.model.predict(x, verbose=0)
         outputs = as_list_of_arrays(pred)
-        dets = extract_detection_candidates(outputs, conf_threshold=self.conf_threshold)
+        # Decode via the QR interpreter (4-anchor head). input_spec is (H, W, C).
+        dets = interpret_outputs("qrcode", outputs, self.input_spec[1], self.input_spec[0],
+                                 self.conf_threshold)
         ok, decoded_info, points, _ = self.cv_qr.detectAndDecodeMulti(image_bgr)
         decoded = decoded_info if ok and decoded_info is not None else []
         summary = Summary(

@@ -73,6 +73,8 @@ nav:
       - Troubleshooting: operations/troubleshooting.md
   - Veridian Studio:
       - Backend Integration: veridian-studio/backend.md
+      - Running the Studio UI: veridian-studio/studio-ui.md
+      - Model Interpreters: veridian-studio/postprocessors.md
   - API: api.md
 
 extra:

@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections import Counter
 import numpy as np
 from .base import RunnerOutput, Summary
-from .common import load_sensai_h5_model, preprocess_for_model, as_list_of_arrays, extract_detection_candidates
+from .common import load_sensai_h5_model, preprocess_for_model, as_list_of_arrays
+from ..postprocessors import interpret as interpret_outputs
 
 
 class AMODRunner:
@@ -29,7 +30,10 @@ class AMODRunner:
         x = preprocess_for_model(image_bgr, self.input_spec)
         pred = self.model.predict(x, verbose=0)
         outputs = as_list_of_arrays(pred)
-        dets = extract_detection_candidates(outputs, conf_threshold=self.conf_threshold)
+        # Decode via the model's interpreter (FCOS multi-object post-process).
+        # input_spec is (H, W, C); detections come back as normalized xyxy boxes.
+        dets = interpret_outputs("amod", outputs, self.input_spec[1], self.input_spec[0],
+                                 self.conf_threshold)
         class_hist = Counter(d["class_id"] for d in dets)
         summary = Summary(
             present=len(dets) > 0,

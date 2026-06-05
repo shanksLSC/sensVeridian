@@ -24,7 +24,8 @@ from pathlib import Path
 
 import cv2
 
-VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v"}
+from .kinds import IMAGE_EXTS, VIDEO_EXTS, discover_images, discover_videos  # noqa: F401
+
 DEFAULT_JPEG_QUALITY = 95
 FRAME_RE = re.compile(r"^(?P<stem>.+)__frame_(?P<idx>\d+)\.jpg$")
 
@@ -110,15 +111,6 @@ def select_every_nth(paths: list[Path], stride: int) -> list[Path]:
     for _stem, frames in sorted(group_frames(paths).items()):
         kept.extend(frames[::stride])
     return kept
-
-
-def discover_videos(root: str | Path) -> list[Path]:
-    """Find video files under a staging directory. The worker resolves a group's
-    uploaded media by tag, e.g. ``{media_root}/{tag}/``."""
-    root = Path(root)
-    if not root.exists():
-        return []
-    return sorted(p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in VIDEO_EXTS)
 
 
 def sample_video(

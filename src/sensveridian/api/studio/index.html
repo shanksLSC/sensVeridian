@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Veridian Studio — Annotation & Verification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app/theme.css" />
+  <style>
+    html, body { margin: 0; }
+    .spin { animation: veridian-spin 0.8s linear infinite; }
+    @keyframes veridian-spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body style="font-family: 'IBM Plex Sans', system-ui, sans-serif; background-color: #0b0e13;">
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- backend config: boot straight into the live REST backend (same origin) -->
+  <script>window.VERIDIAN_CONFIG = { backend: "rest", baseUrl: "/api/v1", wsUrl: "/api/v1/ws", token: null };</script>
+
+  <!-- plain JS deps -->
+  <script src="app/data.js"></script>
+  <script src="app/api.js"></script>
+  <script src="app/hydrate.js"></script>
+  <script src="app/image-slot.js"></script>
+
+  <!-- babel components (order matters: deps -> screens -> shell -> boot) -->
+  <script type="text/babel" src="app/tweaks-panel.jsx"></script>
+  <script type="text/babel" src="app/shared.jsx"></script>
+  <script type="text/babel" src="app/datasets.jsx"></script>
+  <script type="text/babel" src="app/grid.jsx"></script>
+  <script type="text/babel" src="app/canvas.jsx"></script>
+  <script type="text/babel" src="app/inspector.jsx"></script>
+  <script type="text/babel" src="app/models.jsx"></script>
+  <script type="text/babel" src="app/views.jsx"></script>
+  <script type="text/babel" src="app/audio.jsx"></script>
+  <script type="text/babel" src="app/regression.jsx"></script>
+  <script type="text/babel" src="app/lineage.jsx"></script>
+  <script type="text/babel" src="app/ingest.jsx"></script>
+  <script type="text/babel" src="app/ingest-import.jsx"></script>
+  <script type="text/babel" src="app/tweaks.jsx"></script>
+  <script type="text/babel" src="app/shell.jsx"></script>
+  <script type="text/babel" data-presets="react">
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

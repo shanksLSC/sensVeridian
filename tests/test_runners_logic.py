@@ -11,24 +11,23 @@ from sensveridian.runners.face_recognition import FaceRecognitionRunner
 from sensveridian.runners.qrcode import QRCodeRunner
 
 
-def test_amod_predict_has_positive_and_negative_paths(tiny_image_bgr: np.ndarray) -> None:
+def test_amod_predict_has_positive_and_negative_paths(tiny_image_bgr: np.ndarray, monkeypatch) -> None:
+    # Runner plumbing test: the FCOS decode is covered by the postprocessor
+    # tests, so stub the interpreter and assert the runner shapes the output.
     runner = AMODRunner(weights_path="/tmp/amod.h5", conf_threshold=0.3)
     model = MagicMock()
-    model.predict.return_value = np.array(
-        [
-            [10, 20, 30, 40, 0.9, 0.9, 0.1],
-            [1, 2, 3, 4, 0.1, 0.2, 0.8],
-        ],
-        dtype=np.float32,
-    )
+    model.predict.return_value = [np.zeros((1, 9, 12, 4), np.float32)]
     runner.model = model
-    runner.input_spec = (64, 64, 3)
+    runner.input_spec = (288, 384, 3)
+
+    monkeypatch.setattr("sensveridian.runners.amod.interpret_outputs",
+                        lambda *a, **k: [{"bbox": [0.1, 0.1, 0.3, 0.3], "conf": 0.9, "class_id": 1}])
     out = runner.predict(tiny_image_bgr, deps={})
     assert out.summary.present is True
     assert out.summary.count == 1
     assert len(out.raw["detections"]) == 1
 
-    model.predict.return_value = np.array([[1, 2, 3, 4, 0.2, 0.8, 0.2]], dtype=np.float32)
+    monkeypatch.setattr("sensveridian.runners.amod.interpret_outputs", lambda *a, **k: [])
     out2 = runner.predict(tiny_image_bgr, deps={})
     assert out2.summary.present is False
     assert out2.summary.count == 0
@@ -45,12 +44,14 @@ def test_amod_load_updates_input_spec(monkeypatch) -> None:
     assert runner.model is fake_model
 
 
-def test_qrcode_predict_uses_decode_multi(tiny_image_bgr: np.ndarray) -> None:
+def test_qrcode_predict_uses_decode_multi(tiny_image_bgr: np.ndarray, monkeypatch) -> None:
     runner = QRCodeRunner(weights_path="/tmp/qr.h5", conf_threshold=0.3)
     model = MagicMock()
-    model.predict.return_value = np.array([[10, 20, 30, 40, 0.8, 0.7, 0.3]], dtype=np.float32)
+    model.predict.return_value = np.zeros((1, 9, 16, 36), np.float32)
     runner.model = model
-    runner.input_spec = (64, 64, 1)
+    runner.input_spec = (144, 256, 1)
+    monkeypatch.setattr("sensveridian.runners.qrcode.interpret_outputs",
+                        lambda *a, **k: [{"bbox": [0.4, 0.3, 0.6, 0.7], "conf": 0.8, "class_id": 0}])
 
     runner.cv_qr = MagicMock()
     runner.cv_qr.detectAndDecodeMulti.return_value = (
@@ -65,13 +66,15 @@ def test_qrcode_predict_uses_decode_multi(tiny_image_bgr: np.ndarray) -> None:
     assert out.raw["decoded_texts"] == ["abc"]
 
 
-def test_face_detection_scales_normalized_bboxes(tiny_image_bgr: np.ndarray) -> None:
+def test_face_detection_scales_normalized_bboxes(tiny_image_bgr: np.ndarray, monkeypatch) -> None:
     runner = FaceDetectionRunner(weights_path="/tmp/fd.h5", conf_threshold=0.3)
     model = MagicMock()
-    # normalized values <= 1.5 trigger scaling path
-    model.predict.return_value = np.array([[0.1, 0.2, 1.0, 1.2, 0.95, 0.8, 0.2]], dtype=np.float32)
+    model.predict.return_value = np.zeros((1, 9, 16, 38), np.float32)
     runner.model = model
-    runner.input_spec = (64, 64, 3)
+    runner.input_spec = (144, 256, 3)
+    # interpreter returns a normalized box; the runner scales it to the image
+    monkeypatch.setattr("sensveridian.runners.face_detection.interpret_outputs",
+                        lambda *a, **k: [{"bbox": [0.1, 0.2, 0.6, 0.8], "conf": 0.95, "class_id": 0, "landmarks": []}])
     out = runner.predict(tiny_image_bgr, deps={})
     assert out.summary.present is True
     assert out.summary.count == 1

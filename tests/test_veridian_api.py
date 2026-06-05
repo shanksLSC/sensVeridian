@@ -38,6 +38,15 @@ class FakeStore:
     async def list_dataset_images(self, dataset_id, offset=0, limit=200, filter=None, sort=None):
         return [{"id": "sha0", "w": 1280, "h": 800, "augmented": False, "d0_ft": 6.2, "captured": "2026-03-11"}]
 
+    async def get_dataset_grid(self, dataset_id, run_id="baseline", offset=0, limit=200):
+        return [{"id": "sha0", "datasetId": dataset_id, "w": 1280, "h": 800, "augmented": False,
+                 "d0_ft": 6.2, "captured": "2026-03-11", "status": "unreviewed",
+                 "src": f"/api/v1/datasets/{dataset_id}/images/sha0/raw",
+                 "agreement": 0.8, "conflicts": 1,
+                 "objects": [{"id": "sha0_amod_0", "cls": "car", "model": "amod",
+                              "gt": [0.3, 0.4, 0.2, 0.2], "pred": [0.31, 0.41, 0.2, 0.2],
+                              "conf": 0.9, "state": "match", "iou": 0.85}]}]
+
     async def get_image(self, dataset_id, image_id, run_id="baseline"):
         return {
             "id": image_id, "datasetId": dataset_id, "w": 1280, "h": 800, "d0_ft": 6.2,

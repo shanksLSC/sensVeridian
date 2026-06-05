@@ -139,6 +139,10 @@ class AsyncPgStore:
             gt_items=gt_items, reviews=reviews,
         )
 
+    @staticmethod
+    def image_src(dataset_id: str, image_id: str) -> str:
+        return f"/api/v1/datasets/{dataset_id}/images/{image_id}/raw"
+
     async def get_image(self, dataset_id: str, image_id: str, run_id: str = "baseline") -> Optional[dict]:
         img = await self.get_image_row(image_id)
         if not img:
@@ -154,8 +158,55 @@ class AsyncPgStore:
             "augmented": bool(meta.get("augmented_flag", False)),
             "status": await self._image_status(dataset_id, image_id, meta),
             "captured": meta.get("captured"),
+            "src": self.image_src(dataset_id, image_id),
             "objects": objects,
         }
+
+    async def image_path(self, image_id: str) -> Optional[str]:
+        res = await self.s.execute(text("SELECT path FROM images WHERE image_id = :i"), {"i": image_id})
+        return res.scalar()
+
+    async def get_dataset_grid(self, dataset_id: str, run_id: str = "baseline",
+                               offset: int = 0, limit: int = 200) -> list[dict]:
+        """Batched grid data: every image with its fused detections + rollup +
+        raw-image src, in one response (the grid filters on objects[], the
+        review queue aggregates them, and the canvas reads them from cache)."""
+        rows = await self.s.execute(
+            text(
+                "SELECT image_id, width, height, metadata FROM images "
+                "WHERE dataset_id = :d ORDER BY ingested_at OFFSET :off LIMIT :lim"
+            ),
+            {"d": dataset_id, "off": offset, "lim": limit},
+        )
+        reviews = await self._reviews_for_dataset(dataset_id)
+        out = []
+        for r in rows.mappings().all():
+            image_id = r["image_id"]
+            meta = _loads(r["metadata"]) or {}
+            preds = await self._preds_by_model(image_id, run_id)
+            gt_items = await self._gt_items_for_image(image_id)
+            objects = fusion.fuse_detections(
+                image_id, preds, int(r["width"] or 0), int(r["height"] or 0),
+                gt_items=gt_items, reviews=reviews,
+            )
+            roll = fusion.image_rollup(objects)
+            out.append(
+                {
+                    "id": image_id,
+                    "datasetId": dataset_id,
+                    "w": int(r["width"] or 0),
+                    "h": int(r["height"] or 0),
+                    "d0_ft": meta.get("d0_ft", 6.0),
+                    "augmented": bool(meta.get("augmented_flag", False)),
+                    "status": await self._image_status(dataset_id, image_id, meta),
+                    "captured": meta.get("captured"),
+                    "src": self.image_src(dataset_id, image_id),
+                    "agreement": roll["agreement"],
+                    "conflicts": roll["conflicts"],
+                    "objects": objects,
+                }
+            )
+        return out
 
     async def _image_status(self, dataset_id: str, image_id: str, meta: dict) -> str:
         """Status from the frame-level review (img:<id>), else metadata, else
@@ -664,6 +715,49 @@ class AsyncPgStore:
                 edges.append([f"d:{e['dataset_id']}", enode])
 
         return {"nodes": nodes, "edges": edges}
+
+    # ---- seeding -----------------------------------------------------------
+    async def seed_models(self) -> None:
+        """Seed the models + a current model_versions row from the static model
+        cards + sensveridian.config.MODELS, so /models and the ingest model
+        picker work before any ingest. Idempotent."""
+        from ..api import classmaps as cm
+        from ..config import MODELS
+
+        weights = {
+            "amod": str(MODELS.amod),
+            "qrcode": str(MODELS.qrcode),
+            "fd": str(MODELS.fd),
+            "fr": str(MODELS.fr),
+            "aed": "",
+        }
+        for mid in ("amod", "qrcode", "fd", "fr", "aed"):
+            card = cm.model_card(mid)
+            await self.s.execute(
+                text(
+                    """
+                    INSERT INTO models (model_id, display_name, version, weights_path, weights_sha, input_spec, n_classes, depends_on)
+                    VALUES (:m, :d, :v, :p, '', :ispec, :nc, :dep)
+                    ON CONFLICT (model_id) DO UPDATE
+                    SET display_name = excluded.display_name, version = excluded.version,
+                        weights_path = excluded.weights_path, input_spec = excluded.input_spec,
+                        n_classes = excluded.n_classes, depends_on = excluded.depends_on
+                    """
+                ),
+                {"m": mid, "d": card["display_name"], "v": card["version"], "p": weights[mid],
+                 "ispec": card["input"], "nc": card["classes"], "dep": card["depends_on"]},
+            )
+            await self.s.execute(
+                text(
+                    """
+                    INSERT INTO model_versions (model_id, version, weights_sha, metrics, notes, is_current)
+                    VALUES (:m, :v, '', '{}'::jsonb, 'seeded', true)
+                    ON CONFLICT (model_id, version) DO NOTHING
+                    """
+                ),
+                {"m": mid, "v": card["version"]},
+            )
+        await self.s.commit()
 
     # ---- helpers -----------------------------------------------------------
     async def _scalar(self, sql: str, params: dict) -> Any:

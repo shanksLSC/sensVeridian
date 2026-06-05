@@ -2,16 +2,31 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from sqlalchemy import text
 
 from .. import importers, lint
+from ..config import settings
 from ..deps import get_store, require_auth
 from ..schemas import Clip, DatasetSummary, Detection, Image, ImportResult, ImportSpec
 from ...store.pg_async import AsyncPgStore
 
 router = APIRouter(dependencies=[Depends(require_auth)])
+
+
+def _allowed_image_path(path: str) -> Path | None:
+    """Resolve a stored image path and confirm it lives under an allowed root
+    (datasets_root or frames_root) before serving its bytes."""
+    if not path:
+        return None
+    p = Path(path).resolve()
+    roots = [Path(settings.datasets_root).resolve(), Path(settings.frames_root).resolve()]
+    if any(p == r or r in p.parents for r in roots) and p.is_file():
+        return p
+    return None
 
 
 def _slug(name: str) -> str:
@@ -40,7 +55,8 @@ async def get_dataset(
     if ds["kind"] == "audio":
         ds["clips"] = await _list_clips(store, dataset_id)
     else:
-        ds["images"] = await store.list_dataset_images(dataset_id, offset=offset, limit=limit)
+        # batched grid: images with fused detections + rollups + raw-image src
+        ds["images"] = await store.get_dataset_grid(dataset_id, run_id, offset=offset, limit=limit)
     return ds
 
 
@@ -62,6 +78,17 @@ async def list_images(
     store: AsyncPgStore = Depends(get_store),
 ):
     return await store.list_dataset_images(dataset_id, offset=offset, limit=limit, filter=filter, sort=sort)
+
+
+@router.get("/datasets/{dataset_id}/images/{image_id}/raw")
+async def get_image_raw(dataset_id: str, image_id: str, store: AsyncPgStore = Depends(get_store)):
+    """Serve the raw image bytes from its on-disk path (content-addressed by
+    image_id; path validated to live under the datasets/frames roots)."""
+    path = await store.image_path(image_id)
+    safe = _allowed_image_path(path or "")
+    if not safe:
+        raise HTTPException(404, "image bytes not found")
+    return FileResponse(str(safe))
 
 
 @router.get("/datasets/{dataset_id}/images/{image_id}", response_model=Image)
