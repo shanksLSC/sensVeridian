@@ -71,10 +71,13 @@ function AudioGrid({ dataset }) {
 function AudioScreen() {
   const ctx = React.useContext(VDCtx);
   const { reviews, setReview } = ctx;
-  const d = window.VD.getDataset(ctx.route.datasetId);
-  const idx0 = d.clips.findIndex((c) => c.id === ctx.route.clipId);
+  const d = window.VD.getDataset(ctx.route.datasetId) || { id: ctx.route.datasetId, name: "—", clips: [] };
+  const clips = d.clips || [];
+  const idx0 = clips.findIndex((c) => c.id === ctx.route.clipId);
   const [ci, setCi] = React.useState(idx0 < 0 ? 0 : idx0);
-  const clip = d.clips[ci];
+  const clip = clips[ci] || { name: "—", dur: 1, segments: [], wave: [] };
+  const aedModel = window.VD.models.find((mm) => mm.id === "aed");
+  const aedV = (aedModel && aedModel.versions && aedModel.versions[0]) ? aedModel.versions[0].version : "—";
   const [sel, setSel] = React.useState(null);
   const [pos, setPos] = React.useState(0); // 0..1 playhead
   const [playing, setPlaying] = React.useState(false);
@@ -86,7 +89,7 @@ function AudioScreen() {
     return () => clearInterval(iv);
   }, [playing, clip.dur]);
 
-  const goClip = (n) => { const k = (n + d.clips.length) % d.clips.length; setCi(k); setSel(null); setPos(0); setPlaying(false); };
+  const goClip = (n) => { if (!clips.length) return; const k = (n + clips.length) % clips.length; setCi(k); setSel(null); setPos(0); setPlaying(false); };
   const segIds = clip.segments.map((s) => s.id);
   const stepSeg = (dir) => { if (!segIds.length) return; const i = segIds.indexOf(sel); const n = i < 0 ? 0 : (i + dir + segIds.length) % segIds.length; setSel(segIds[n]); const s = clip.segments[n]; setPos((s.start + s.end) / 2); };
 
@@ -134,10 +137,10 @@ function AudioScreen() {
         <Icon name="audio" size={16} style={{ color: "var(--m-aed)" }} />
         <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>{clip.name}</span>
         <div style={{ flex: 1 }} />
-        <span className="chip" style={{ borderColor: "var(--line-2)" }}><Icon name="cpu" size={12} style={{ color: "var(--m-aed)" }} />AED v{window.VD.models.find((m) => m.id === "aed").versions[0].version}</span>
+        <span className="chip" style={{ borderColor: "var(--line-2)" }}><Icon name="cpu" size={12} style={{ color: "var(--m-aed)" }} />AED v{aedV}</span>
         <div style={{ width: 1, height: 22, background: "var(--line)" }} />
         <button className="btn ghost icon" onClick={() => goClip(ci - 1)}><Icon name="chevL" size={16} /></button>
-        <span className="tnum mono" style={{ fontSize: 12, color: "var(--tx-1)", minWidth: 54, textAlign: "center" }}>{ci + 1} / {d.clips.length}</span>
+        <span className="tnum mono" style={{ fontSize: 12, color: "var(--tx-1)", minWidth: 54, textAlign: "center" }}>{ci + 1} / {clips.length}</span>
         <button className="btn ghost icon" onClick={() => goClip(ci + 1)}><Icon name="chevR" size={16} /></button>
         <button className="btn primary sm" onClick={() => clip.segments.forEach((s) => setReview(s.id, { verdict: "accepted" }))}><Icon name="check" size={14} />Verify clip</button>
       </header>

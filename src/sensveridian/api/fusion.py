@@ -204,6 +204,7 @@ def fuse_detections(
     reviews: Optional[dict[str, dict]] = None,
     iou_thr: float = DEFAULT_IOU_THR,
     name_map: Optional[dict[str, str]] = None,
+    class_map: Optional[dict[str, str]] = None,
 ) -> list[dict]:
     """Fuse predictions with ground truth into ``Detection[]``.
 
@@ -219,9 +220,21 @@ def fuse_detections(
         ``fp``; ``edited`` replaces the gt box; ``accepted`` confirms the pred.
     iou_thr : match threshold (0.5, matching the scaffold/data.js).
     name_map : optional ``person_id -> display name`` for FR identities.
+    class_map : optional ``{gt_label: model_class}`` alignment. When provided,
+        GT boxes whose label is not in the map are dropped (the dataset carries
+        classes the model never predicts), and the rest are relabelled to the
+        model class so match/mismatch compares like with like.
     """
     reviews = reviews or {}
     gt_items = list(gt_items or [])
+    if class_map:
+        mapped = []
+        for g in gt_items:
+            m = class_map.get(g.get("cls"))
+            if m is None:
+                continue  # GT class the model does not predict -> ignore
+            mapped.append({**g, "cls": m})
+        gt_items = mapped
     has_gt_layer = len(gt_items) > 0
 
     # Flatten predictions with stable ids. The id embeds the FULL image_id so a
@@ -287,6 +300,89 @@ def fuse_detections(
             detections.append(_detection(f"{image_id}_gt_{j}", miss, g.get("box"), "miss", gt_item=g))
 
     return detections
+
+
+def committed_gt(
+    image_id: str,
+    preds_by_model: dict[str, dict],
+    img_w: int,
+    img_h: int,
+    *,
+    gt_items: Optional[list[dict]] = None,
+    reviews: Optional[dict[str, dict]] = None,
+    class_map: Optional[dict[str, str]] = None,
+    iou_thr: float = DEFAULT_IOU_THR,
+) -> list[dict]:
+    """Human-verified ground truth for curation write-back (Path 1), expressed in
+    the **label file's** class vocabulary as ``[{cls, box:[xywh]}]``.
+
+    The human curates *predicted* boxes; verdicts live in ``reviews`` keyed by the
+    fusion detection id (``<image_id>_<model_id>_<idx>``):
+
+    - ``rejected`` prediction -> not GT; if it overlapped an imported GT box, that
+      box is dropped too (the human overrode it);
+    - ``edited`` prediction -> its corrected box becomes GT;
+    - ``accepted`` / IoU-matched prediction -> becomes GT, keeping the imported GT
+      label when it matches one, else the model class mapped back through the
+      class-map (its inverse);
+    - imported GT boxes that no prediction touched are kept verbatim.
+
+    When there is no imported GT layer, every non-rejected prediction is written
+    (the provisional auto-label flow).
+    """
+    gt_items = list(gt_items or [])
+    reviews = reviews or {}
+    inv: dict[str, str] = {}
+    for gt_label, model_cls in (class_map or {}).items():
+        inv.setdefault(model_cls, gt_label)  # first GT label wins for a model class
+
+    preds: list[tuple[str, dict]] = []
+    for model_id, payload in preds_by_model.items():
+        for idx, p in enumerate(extract_pred_detections(model_id, payload, img_w, img_h)):
+            preds.append((f"{image_id}_{model_id}_{idx}", p))
+
+    matched: set[int] = set()
+    dropped: set[int] = set()
+
+    def _best(box: Optional[Box]) -> int:
+        if not box:
+            return -1
+        best_j, best_iou = -1, iou_thr
+        for j, g in enumerate(gt_items):
+            if j in matched or j in dropped:
+                continue
+            v = iou_xywh(g.get("box"), box)
+            if v >= best_iou:
+                best_iou, best_j = v, j
+        return best_j
+
+    verified: list[dict] = []
+    for det_id, p in preds:
+        rv = reviews.get(det_id) or {}
+        verdict = rv.get("verdict")
+        pbox = p.get("box")
+        if verdict == "rejected":
+            j = _best(pbox)
+            if j >= 0:
+                dropped.add(j)
+            continue
+        box = rv["box"] if (verdict == "edited" and rv.get("box")) else pbox
+        if not box:
+            continue
+        j = _best(box)
+        if j >= 0:
+            matched.add(j)
+            verified.append({"cls": gt_items[j].get("cls"), "box": box})
+        elif verdict == "accepted" or not gt_items:
+            model_cls = p.get("cls")
+            verified.append({"cls": inv.get(model_cls, model_cls), "box": box})
+
+    for j, g in enumerate(gt_items):
+        if j in matched or j in dropped:
+            continue
+        verified.append({"cls": g.get("cls"), "box": g.get("box")})
+
+    return verified
 
 
 def detection_image_id(target_id: str) -> Optional[str]:

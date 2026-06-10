@@ -22,6 +22,9 @@ class FakeStore:
         self.created_connections = []
         self.created_jobs = []
         self.inserted_gt = 0
+        self.class_maps = {}
+        self.curate = None  # set by curation tests
+        self.replaced_gt = []
 
     async def list_datasets(self):
         return [{"id": "street_scenes", "name": "Street Scenes", "desc": "", "kind": "vision",
@@ -29,8 +32,31 @@ class FakeStore:
                  "reviewed": 9, "runId": "baseline"}]
 
     async def get_dataset_row(self, dataset_id):
-        return {"id": dataset_id, "name": "Street Scenes", "desc": "", "kind": "vision",
-                "models": ["amod"], "palette": "dusk", "runId": "baseline"}
+        row = {"id": dataset_id, "name": "Street Scenes", "desc": "", "kind": "vision",
+               "models": ["amod"], "palette": "dusk", "runId": "baseline",
+               "mode": "eval", "class_names": {"0": "car"},
+               "class_map": self.class_maps.get(dataset_id, {"car": "car"})}
+        if dataset_id.startswith("curate") and self.curate:
+            row.update({"mode": "curate", "labels_dir": self.curate["labels_dir"],
+                        "label_format": self.curate["label_format"],
+                        "class_names": self.curate["class_names"], "class_map": {}})
+        return row
+
+    async def build_committed_gt(self, dataset_id, image_id, run_id="baseline"):
+        return {"ds": await self.get_dataset_row(dataset_id),
+                "path": self.curate["path"], "boxes": self.curate["boxes"]}
+
+    async def replace_image_gt(self, layer_id, dataset_id, image_id, image_ref, boxes):
+        self.replaced_gt.append((layer_id, dataset_id, image_id, image_ref, list(boxes)))
+        return len(boxes)
+
+    async def get_eval_metrics(self, dataset_id):
+        return [{"datasetId": dataset_id, "model": "amod", "runId": "baseline",
+                 "metrics": {"mAP": 0.5, "precision": 0.5, "recall": 0.5},
+                 "computedAt": "2026-06-10"}]
+
+    async def set_class_map(self, dataset_id, class_map):
+        self.class_maps[dataset_id] = class_map
 
     async def dataset_aggregates(self, dataset_id, kind="vision", run_id="baseline"):
         return {"count": 28, "agreement": 0.81, "conflicts": 34, "reviewed": 9}
@@ -92,6 +118,10 @@ class FakeStore:
         self.saved_reviews.extend((t, k, verdict, dataset_id, None) for t, k in zip(target_ids, kinds))
         return len(target_ids)
 
+    async def review_queue(self, limit=200):
+        return [{"datasetId": "street_scenes", "datasetName": "Street Scenes", "imageId": "sha0",
+                 "cls": "car", "state": "fp", "conf": 0.42, "iou": 0.1, "detId": "sha0_amod_1"}]
+
     async def lineage(self):
         return {"nodes": [{"id": "d:street", "type": "dataset", "label": "Street", "meta": "vision"}],
                 "edges": [["d:street", "r:baseline:amod"]]}
@@ -133,9 +163,16 @@ def client(store: FakeStore):
     app.dependency_overrides.clear()
 
 
-def test_health(client):
+def test_health(client, monkeypatch):
+    from sensveridian.ingest import worker
+
+    monkeypatch.setattr(worker, "redis_reachable", lambda *a, **k: True)
+    monkeypatch.setattr(worker, "use_arq", lambda: False)
     r = client.get("/api/v1/health")
-    assert r.status_code == 200 and r.json()["storage"] == "postgres"
+    assert r.status_code == 200
+    body = r.json()
+    assert body["storage"] == "postgres"
+    assert body["redis"] is True and body["arq"] is False
 
 
 def test_list_datasets(client):
@@ -221,6 +258,86 @@ def test_lineage(client):
     r = client.get("/api/v1/lineage")
     assert r.status_code == 200
     assert r.json()["nodes"][0]["type"] == "dataset"
+
+
+def test_review_queue(client):
+    r = client.get("/api/v1/queue")
+    assert r.status_code == 200
+    body = r.json()
+    assert body[0]["state"] == "fp" and body[0]["datasetId"] == "street_scenes"
+
+
+def test_get_metrics(client):
+    r = client.get("/api/v1/datasets/street_scenes/metrics")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["mode"] == "eval"
+    assert body["metrics"][0]["model"] == "amod"
+    assert body["metrics"][0]["metrics"]["mAP"] == 0.5
+
+
+def test_put_class_map_drops_empty_values(client, store):
+    r = client.put("/api/v1/datasets/street_scenes/class-map",
+                   json={"Human face": "face", "ignore_me": ""})
+    assert r.status_code == 200
+    assert r.json()["classMap"] == {"Human face": "face"}  # empty mapping dropped
+    assert store.class_maps["street_scenes"] == {"Human face": "face"}
+
+
+def test_commit_labels_rejects_eval_mode(client):
+    # street_scenes is mode='eval' (read-only) -> 409
+    r = client.post("/api/v1/datasets/street_scenes/images/sha0/commit-labels")
+    assert r.status_code == 409
+
+
+def test_commit_labels_curate_writes_file(client, store, monkeypatch, tmp_path):
+    from sensveridian.api.routers import datasets as dmod
+
+    # point the datasets root at tmp so the path guards pass
+    monkeypatch.setattr(dmod.settings, "datasets_root", str(tmp_path))
+    images_dir = tmp_path / "ds" / "images"
+    labels_dir = tmp_path / "ds" / "labels"
+    images_dir.mkdir(parents=True)
+    labels_dir.mkdir(parents=True)
+    img = images_dir / "f1.jpg"
+    img.write_bytes(b"\xff\xd8\xff")  # bytes irrelevant; only existence is checked
+    store.curate = {
+        "labels_dir": str(labels_dir), "label_format": "yolo",
+        "class_names": {"0": "face"}, "path": str(img),
+        "boxes": [{"cls": "face", "box": [0.1, 0.1, 0.2, 0.2]}],
+    }
+
+    r = client.post("/api/v1/datasets/curate_ds/images/img1/commit-labels")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["ok"] is True and body["n"] == 1
+
+    lf = labels_dir / "f1.txt"
+    assert lf.exists()
+    assert lf.read_text().strip().startswith("0 ")  # class "face" -> index 0
+    # DB side-effects: GT replaced + frame marked verified
+    assert store.replaced_gt and store.replaced_gt[0][2] == "img1"
+    assert any(t[0] == "img:img1" for t in store.saved_reviews)
+
+
+def test_compute_metrics_endpoint(client, monkeypatch):
+    class _FakePg:
+        def __init__(self, *_a, **_k):
+            pass
+
+        def compute_eval_metrics(self, dataset_id, model_id, run_id):
+            return {"mAP": 0.42, "precision": 0.5, "recall": 0.4, "model": model_id}
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr("sensveridian.store.pg.PgStore", _FakePg)
+    r = client.post("/api/v1/datasets/street_scenes/metrics:compute?model_id=amod&run_id=baseline")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["datasetId"] == "street_scenes"
+    assert body["results"][0]["model"] == "amod"
+    assert body["results"][0]["metrics"]["mAP"] == 0.42
 
 
 def test_auth_enforced_when_token_set(client, monkeypatch):

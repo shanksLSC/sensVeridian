@@ -518,6 +518,8 @@ function LocalIngestFlow({ onExit }) {
   const [stage, setStage] = React.useState("compose");    // compose | processing | done
   const [job, setJob] = React.useState(null);
   const [created, setCreated] = React.useState([]);
+  const [mode, setMode] = React.useState("eval");         // eval (read-only) | curate (writes labels)
+  const [reingest, setReingest] = React.useState(false);  // re-run + overwrite existing predictions
 
   React.useEffect(() => {
     let alive = true;
@@ -553,7 +555,8 @@ function LocalIngestFlow({ onExit }) {
       const dsId = localSlug(e.name);
       const frames = e.kind === "video" ? Math.max(1, e.videos * 60) : Math.min(c.maxImages, e.images || c.maxImages);
       return { tag: dsId, label: e.name, models: c.models, path: e.path, dataset: dsId,
-               isNew: true, maxImages: c.maxImages, kind: e.kind === "video" ? "video" : "image", frames };
+               isNew: true, maxImages: c.maxImages, kind: e.kind === "video" ? "video" : "image",
+               mode, reingest, frames };
     });
     const spec = { source: "local", trustThreshold: t.autoAccept ? t.trustThreshold : null, groups };
     try {
@@ -637,6 +640,20 @@ function LocalIngestFlow({ onExit }) {
           <div style={{ fontWeight: 700, fontSize: 14 }}>Run plan</div>
           <div style={{ fontSize: 11.5, color: "var(--tx-2)" }}>Each selected folder becomes a dataset; the oracle models run over its images (videos are frame-split first).</div>
           <TrustControl t={t} setTweak={setTweak} totalFrames={selected.reduce((s, e) => s + (e.kind === "video" ? 0 : Math.min((sel[e.path] || {}).maxImages || 0, e.images || 0)), 0)} />
+          <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+            <div style={{ fontSize: 11, color: "var(--tx-2)", marginBottom: 6 }}>Ingest path</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              {[["eval", "Evaluate", "shield", "Read-only · score predictions vs ground-truth"], ["curate", "Curate", "edit", "Verify writes corrected labels back to disk (.bak kept)"]].map(([id, lab, ic, tip]) => (
+                <button key={id} title={tip} onClick={() => setMode(id)} className="btn sm" style={{ flex: 1, justifyContent: "center", background: mode === id ? "var(--bg-3)" : "transparent", border: "1px solid " + (mode === id ? (id === "curate" ? "var(--gt)" : "var(--accent)") : "var(--line-2)"), color: mode === id ? "var(--tx-0)" : "var(--tx-2)" }}>
+                  <Icon name={ic} size={12} />{lab}
+                </button>
+              ))}
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 11.5, color: "var(--tx-1)", cursor: "pointer" }}>
+              <input type="checkbox" checked={reingest} onChange={(e) => setReingest(e.target.checked)} style={{ accentColor: "var(--accent)" }} />
+              Re-run &amp; overwrite existing predictions
+            </label>
+          </div>
           <div style={{ flex: 1 }} />
           <button className="btn primary" disabled={!canLaunch} onClick={launch} style={{ justifyContent: "center", opacity: canLaunch ? 1 : 0.45, cursor: canLaunch ? "pointer" : "not-allowed" }}><Icon name="sparkle" size={15} />Run models</button>
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "var(--tx-3)", justifyContent: "center" }}><Icon name="database" size={12} style={{ color: "var(--match)" }} />writes to PostgreSQL</div>

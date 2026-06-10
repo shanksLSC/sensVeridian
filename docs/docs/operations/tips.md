@@ -8,7 +8,7 @@ Best practices for running sensVeridian in production and development.
 - [ ] Face registry seeded: `sv faces list` shows ≥1 entry
 - [ ] Models accessible: `ls /data3/ssharma8/all-models/*/..h5`
 - [ ] SAM checkpoint available: `ls /data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth`
-- [ ] Disk space: `df -h` (DuckDB, augmentations, depth maps need 10–100 GB depending on image count)
+- [ ] Disk space: `df -h` (PostgreSQL data, augmentations, depth maps need 10–100 GB depending on image count)
 
 ## Ingest Optimization
 
@@ -88,11 +88,11 @@ sv augment distance img1.jpg --d-max-ft 15 --step-ft 1 \
 ### Regular backups
 
 ```bash
-# Backup before large operations
-cp sensveridian.duckdb sensveridian.duckdb.backup.$(date +%s)
+# Backup before large operations (pg_dump custom format)
+pg_dump "$DATABASE_URL_SYNC" -Fc -f sensveridian.backup.$(date +%s).dump
 
 # Keep last 3 backups
-ls -1t sensveridian.duckdb.backup.* | tail -n +4 | xargs rm
+ls -1t sensveridian.backup.*.dump | tail -n +4 | xargs rm
 ```
 
 ### Cleanup old runs
@@ -196,7 +196,7 @@ for idx, row in df.iterrows():
 ./scripts/redis_stop.sh
 
 # Backup database
-cp sensveridian.duckdb sensveridian.duckdb.final.$(date +%s)
+pg_dump "$DATABASE_URL_SYNC" -Fc -f sensveridian.final.$(date +%s).dump
 
 echo "sensVeridian stopped cleanly"
 ```

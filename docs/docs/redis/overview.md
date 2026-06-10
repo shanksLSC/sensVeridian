@@ -76,4 +76,21 @@ print('mode:', r.mode, 'entries:', len(r.list_entries()))
 
 ## File Fallback (Still Supported)
 
-If Redis is unreachable at `SV_REDIS_URL`, `FaceRegistry` transparently falls back to `cache/faces_registry.json` so local development still works. Once Redis is up, run the migration script above to promote those entries and archive the JSON.
+If Redis is unreachable at `SV_REDIS_URL`, `FaceRegistry` transparently falls back to `cache/faces_registry.json` so local development still works. Once Redis is up, run the migration script above to promote those entries and archive the JSON. The connect timeout is configurable via `SV_REDIS_CONNECT_TIMEOUT` (seconds, default `0.5`).
+
+## Ingest Queue (arq) — Auto-detected
+
+The same Redis also backs the **arq ingest queue**. Veridian Studio detects this automatically — no flag required:
+
+- The Studio API calls `sensveridian.ingest.worker.use_arq()`, which returns `true` only when a **live arq worker** is present (its Redis health-check key `arq:queue:health-check` exists). Otherwise ingest runs **in-process** in a worker thread, so a dev server works with or without Redis.
+- When arq drives a job, `run_ingest` publishes progress frames to Redis pub/sub on channel `job:<job_id>`, and the WebSocket `/ws/jobs/{job_id}` subscribes to them. Without a worker, the WebSocket reads the in-process bus. Both emit identical frames.
+- `GET /api/v1/health` reports live `redis` and `arq` status.
+
+```bash
+# Start the queue worker (uses SV_REDIS_URL). Leave it running alongside uvicorn.
+arq sensveridian.ingest.worker.WorkerSettings
+
+# Force the decision either way (overrides auto-detection):
+VERIDIAN_USE_ARQ=1 uvicorn sensveridian.api.main:app --port 8000   # always arq
+VERIDIAN_USE_ARQ=0 uvicorn sensveridian.api.main:app --port 8000   # always in-process
+```

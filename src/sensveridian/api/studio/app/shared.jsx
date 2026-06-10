@@ -225,4 +225,86 @@ function Scene({ image, className, style }) {
   );
 }
 
-Object.assign(window, { Icon, Scene, vhelp });
+/* ---- Eval metrics + class-map editor (Path 2) --------------------------- */
+function EvalPanel({ dataset }) {
+  const isRest = (window.VERIDIAN_CONFIG || {}).backend === "rest";
+  const [data, setData] = React.useState(null);
+  const [busy, setBusy] = React.useState(false);
+  const load = React.useCallback(() => {
+    if (!isRest || !window.VeridianAPI || !window.VeridianAPI.getMetrics) return;
+    window.VeridianAPI.getMetrics(dataset.id).then(setData).catch((e) => console.warn("[veridian] metrics load", e));
+  }, [dataset.id, isRest]);
+  React.useEffect(load, [load]);
+  if (!isRest) return null;
+
+  const metrics = (data && data.metrics) || [];
+  const classNames = (data && data.classNames) || dataset.class_names || {};
+  const classMap = (data && data.classMap) || dataset.class_map || {};
+  const mode = (data && data.mode) || dataset.mode || "eval";
+  const modelClassOptions = Array.from(new Set([...Object.keys(window.VD.CLASSES || {}), ...Object.values(classMap)]));
+
+  const compute = async () => {
+    setBusy(true);
+    try { await window.VeridianAPI.computeMetrics(dataset.id); load(); }
+    catch (e) { console.warn("[veridian] compute metrics", e); }
+    setBusy(false);
+  };
+  const onMap = async (gtLabel, modelCls) => {
+    const next = Object.assign({}, classMap);
+    if (modelCls) next[gtLabel] = modelCls; else delete next[gtLabel];
+    setData((d) => Object.assign({}, d || {}, { classMap: next }));
+    try { await window.VeridianAPI.setClassMap(dataset.id, next); }
+    catch (e) { console.warn("[veridian] set class-map", e); }
+  };
+
+  return (
+    <div className="card" style={{ padding: 14, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <Icon name="trend" size={14} style={{ color: "var(--accent-2)" }} />
+        <span style={{ fontWeight: 600, fontSize: 12.5 }}>Predicted vs ground-truth metrics</span>
+        <span className="chip" style={{ borderColor: mode === "curate" ? "var(--gt)" : "var(--accent)", color: mode === "curate" ? "var(--gt)" : "var(--accent-2)" }}>{mode === "curate" ? "Curate" : "Eval"}</span>
+        <div style={{ flex: 1 }} />
+        <button className="btn sm" disabled={busy} onClick={compute}><Icon name="cpu" size={13} />{busy ? "Computing…" : "Recompute"}</button>
+      </div>
+      {metrics.length === 0 ? (
+        <div style={{ fontSize: 12, color: "var(--tx-2)" }}>No metrics computed yet. Ingest an eval set with ground-truth labels, or click Recompute.</div>
+      ) : (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead><tr style={{ color: "var(--tx-2)", textAlign: "right" }}>
+            <th style={{ textAlign: "left", padding: "4px 6px" }}>Model</th><th>mAP</th><th>AP50</th><th>P</th><th>R</th><th>F1</th><th>Agree</th><th>#GT</th>
+          </tr></thead>
+          <tbody>
+            {metrics.map((row) => { const mm = row.metrics || {}; return (
+              <tr key={row.model + ":" + row.runId} style={{ borderTop: "1px solid var(--line)", textAlign: "right" }}>
+                <td style={{ textAlign: "left", padding: "4px 6px" }}><b>{row.model}</b> <span className="mono" style={{ color: "var(--tx-3)" }}>{row.runId}</span></td>
+                <td className="tnum">{vhelp.pct1(mm.mAP)}</td><td className="tnum">{vhelp.pct1(mm.AP50)}</td>
+                <td className="tnum">{vhelp.pct1(mm.precision)}</td><td className="tnum">{vhelp.pct1(mm.recall)}</td>
+                <td className="tnum">{vhelp.pct1(mm.f1)}</td><td className="tnum">{vhelp.pct1(mm.agreement)}</td>
+                <td className="mono tnum">{mm.n_gt != null ? mm.n_gt : "—"}</td>
+              </tr>); })}
+          </tbody>
+        </table>
+      )}
+      {Object.keys(classNames).length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 11, color: "var(--tx-2)", marginBottom: 6 }}>GT-label → model-class alignment (unmapped labels are ignored in metrics)</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            {Object.entries(classNames).map(([idx, name]) => (
+              <label key={idx} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5 }}>
+                <span style={{ color: "var(--tx-1)" }}>{name}</span>
+                <Icon name="arrowR" size={11} style={{ color: "var(--tx-3)" }} />
+                <select value={classMap[name] || ""} onChange={(e) => onMap(name, e.target.value)}
+                  style={{ background: "var(--bg-3)", border: "1px solid var(--line-2)", borderRadius: 5, color: "var(--tx-0)", fontSize: 11, padding: "2px 6px" }}>
+                  <option value="">(ignore)</option>
+                  {modelClassOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+Object.assign(window, { Icon, Scene, vhelp, EvalPanel });

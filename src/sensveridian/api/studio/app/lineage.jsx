@@ -45,13 +45,40 @@ const COL_X = [30, 280, 540, 800, 1030];
 const COL_LABELS = ["Sources", "Datasets (frames)", "Model runs", "Verified ground-truth", "Exports"];
 const NODE_W = 196, NODE_H = 52, ROW_H = 74;
 
+// Map a server lineage node ({id,type,label,meta}) to the layout shape the
+// screen renders (col by type, model for run-node color, ds for the open-button).
+const _LIN_COL = { source: 0, aug: 0, dataset: 1, run: 2, verified: 3, export: 4 };
+function normalizeLineage(data) {
+  const nodes = (data && data.nodes ? data.nodes : []).map((n) => {
+    let model, ds;
+    if (n.type === "run") { const p = String(n.id).split(":"); model = p[p.length - 1]; }
+    if (n.type === "dataset" && String(n.id).startsWith("d:")) ds = String(n.id).slice(2);
+    return { id: n.id, type: n.type, label: n.label, sub: n.meta || "", meta: n.meta || "",
+             col: _LIN_COL[n.type] != null ? _LIN_COL[n.type] : 1, model, ds };
+  });
+  return { nodes, edges: (data && data.edges) || [] };
+}
+
 function LineageScreen() {
   const ctx = React.useContext(VDCtx);
   const [sel, setSel] = React.useState(null);
+  const isRest = (window.VERIDIAN_CONFIG || {}).backend === "rest";
+  const [data, setData] = React.useState({ nodes: LIN_NODES, edges: LIN_EDGES });
+
+  React.useEffect(() => {
+    let alive = true;
+    if (isRest && window.VeridianAPI && window.VeridianAPI.getLineage) {
+      window.VeridianAPI.getLineage()
+        .then((d) => { if (alive && d && (d.nodes || []).length) setData(normalizeLineage(d)); })
+        .catch((e) => console.warn("[veridian] lineage load failed", e));
+    }
+    return () => { alive = false; };
+  }, [isRest]);
 
   const { nodes, H } = React.useMemo(() => {
-    const cols = {}; LIN_NODES.forEach((n) => { (cols[n.col] = cols[n.col] || []).push(n); });
-    const maxCount = Math.max(...Object.values(cols).map((c) => c.length));
+    const cols = {}; data.nodes.forEach((n) => { (cols[n.col] = cols[n.col] || []).push(n); });
+    const counts = Object.values(cols).map((c) => c.length);
+    const maxCount = counts.length ? Math.max(...counts) : 0;
     const H = maxCount * ROW_H + 30;
     const mid = H / 2;
     const placed = {};
@@ -62,18 +89,18 @@ function LineageScreen() {
       });
     });
     return { nodes: placed, H };
-  }, []);
+  }, [data]);
 
   // adjacency for lineage highlight
   const lineage = React.useMemo(() => {
     if (!sel) return null;
     const up = {}, down = {};
-    LIN_EDGES.forEach(([a, b]) => { (down[a] = down[a] || []).push(b); (up[b] = up[b] || []).push(a); });
+    data.edges.forEach(([a, b]) => { (down[a] = down[a] || []).push(b); (up[b] = up[b] || []).push(a); });
     const set = new Set([sel]);
     const walk = (id, map) => { (map[id] || []).forEach((n) => { if (!set.has(n)) { set.add(n); walk(n, map); } }); };
     walk(sel, up); walk(sel, down);
     return set;
-  }, [sel]);
+  }, [sel, data]);
 
   const edgeOn = (a, b) => !lineage || (lineage.has(a) && lineage.has(b));
   const nodeOn = (id) => !lineage || lineage.has(id);
@@ -97,7 +124,7 @@ function LineageScreen() {
           <div style={{ position: "relative", width, minWidth: "100%", height: H, background: "radial-gradient(circle at 30% 20%, rgba(91,124,250,.04), transparent 60%)" }}>
             {/* edges */}
             <svg width={width} height={H} style={{ position: "absolute", inset: 0 }}>
-              {LIN_EDGES.map(([a, b], i) => {
+              {data.edges.map(([a, b], i) => {
                 const na = nodes[a], nb = nodes[b]; if (!na || !nb) return null;
                 const x0 = na.x + NODE_W, y0 = na.y + NODE_H / 2, x1 = nb.x, y1 = nb.y + NODE_H / 2;
                 const mx = (x0 + x1) / 2;

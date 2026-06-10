@@ -2,7 +2,7 @@
 
 A ground-truth cache and distance-aware augmentation pipeline for vision model evaluation.
 
-sensVeridian ingests images, runs a configurable pipeline of ML oracle models on each, stores results in a queryable DuckDB cache, and can synthesize photorealistic distance-swept augmentations for robustness testing.
+sensVeridian ingests images, runs a configurable pipeline of ML oracle models on each, stores results in a queryable PostgreSQL cache, and can synthesize photorealistic distance-swept augmentations for robustness testing.
 
 ---
 
@@ -69,8 +69,8 @@ sv export --to /tmp/ground_truth.parquet
 - Pluggable: add a new runner in `src/sensveridian/runners/` and register in `orchestrator.py`.
 
 ### Storage
-- **DuckDB** as analytical store: one-file embedded DB with SQL, JSON columns, parquet export.
-- **Redis** as registered-faces lookup for FR matching (with file-backed fallback if no Redis).
+- **PostgreSQL** as analytical store: SQL with JSONB columns; parquet export via pandas. A synchronous `PgStore` (psycopg) drives the Orchestrator/worker and an async `AsyncPgStore` (asyncpg) serves the Studio API, both over `store/schema_pg.sql`.
+- **Redis** as registered-faces lookup for FR matching and the arq ingest queue (with file-backed fallback if no Redis).
 
 ### Distance-Sweep Augmentation
 - **ZoeDepth** for metric monocular depth (meters → feet).
@@ -86,7 +86,7 @@ sv export --to /tmp/ground_truth.parquet
 ## Architecture
 
 ```
-CLI (sv) → Orchestrator → {AMOD, QRCode, FD, FR} → DuckDB
+CLI (sv) → Orchestrator → {AMOD, QRCode, FD, FR} → PostgreSQL
                                   ↓
                          FR matches faces against Redis/file registry
 
@@ -255,7 +255,7 @@ Entrypoint: `sv` (installed via `pyproject.toml`) or `python -m sensveridian.cli
 | Command          | What it does                                             |
 |------------------|----------------------------------------------------------|
 | `sv ingest`      | Run oracles on images and write to cache                 |
-| `sv query`       | Execute arbitrary SQL against DuckDB                     |
+| `sv query`       | Execute arbitrary SQL against PostgreSQL                 |
 | `sv export`      | Export a SQL result to parquet                           |
 | `sv stats`       | Show row counts for all tables                           |
 | `sv faces ...`   | Face registry subcommands                                |
@@ -287,7 +287,7 @@ sv ingest /data3/ssharma8/all-models/Images --run-id exp_2026_04_24_cpu
 
 ### `sv query`
 
-Run any SQL against the live DuckDB file.
+Run any SQL against the live PostgreSQL database.
 
 ```
 sv query "<SQL>"
@@ -456,7 +456,7 @@ sv augment list 329acdb6e9850f346b06d04fd73aec48f28d793e5c8...
 
 ## Data Model / Schema
 
-All tables live in `sensveridian.duckdb` at the project root.
+All tables live in the PostgreSQL database referenced by `DATABASE_URL` (DDL in `src/sensveridian/store/schema_pg.sql`).
 
 | Table                  | Purpose                                                    |
 |-----------------------|------------------------------------------------------------|
@@ -604,13 +604,12 @@ For programmatic use outside the CLI.
 ```python
 from pathlib import Path
 from sensveridian.config import SETTINGS
-from sensveridian.store.duck import DuckStore
+from sensveridian.store.pg import PgStore
 from sensveridian.store.faces_registry import FaceRegistry
 from sensveridian.orchestrator import Orchestrator
 from sensveridian.augmentation.distance_sweep import DistanceAugmentor
 
-schema = Path(__file__).parent / "src/sensveridian/store/schema.sql"
-store = DuckStore(db_path=SETTINGS.db_path, schema_path=schema)
+store = PgStore(SETTINGS.database_url)   # schema_pg.sql; migrate() is additive
 store.migrate()
 
 registry = FaceRegistry(redis_url=SETTINGS.redis_url)
@@ -650,7 +649,7 @@ print("Generated:", generated)
 - **Keep caches off `/home`**: set `HOME`, `HF_HOME`, `TORCH_HOME`, `XDG_CACHE_HOME` under `/data3/ssharma8/...`.
 - **Re-run safely**: `sv ingest` is idempotent per `(image_id, run_id, model_id)`; use `--skip-existing False` to force overwrite.
 - **Compare runs**: ingest the same folder with two `run_id` values, then diff `predictions_summary` across runs.
-- **Parquet export is king** for downstream notebooks — DuckDB + `pandas.read_parquet` is the cleanest path.
+- **Parquet export is king** for downstream notebooks — `sv export` materializes a SQL result to parquet (via pandas); read it back with `pandas.read_parquet`.
 - **Registered-faces store**: prefer the per-project Redis — start it with `./scripts/redis_start.sh`. If Redis is down, FR transparently falls back to `cache/faces_registry.json`; run `scripts/migrate_faces_to_redis.py` to promote those entries once Redis is up.
 - **Adding a new oracle**:
   1. Create `src/sensveridian/runners/<name>.py` implementing the `Runner` protocol from `runners/base.py`.
@@ -663,7 +662,7 @@ print("Generated:", generated)
 
 | Symptom                                                      | Fix                                                                       |
 |-------------------------------------------------------------|---------------------------------------------------------------------------|
-| `ModuleNotFoundError: duckdb / typer / redis ...`           | `pip install -e .` in the project root.                                   |
+| `ModuleNotFoundError: psycopg / asyncpg / typer / redis ...` | `pip install -e ".[api]"` in the project root.                            |
 | `Unknown layer: sensAI>QuantizeConv2D`                      | Already handled — loader uses `lscquant.layers` custom objects.           |
 | `CUDA out of memory`                                         | Pin `CUDA_VISIBLE_DEVICES` to a free GPU; or set `SV_DEVICE=cpu`.         |
 | `RuntimeError: Error(s) in loading state_dict for ZoeDepthNK` | Pin `timm==0.6.12` (ZoeDepth is incompatible with newer timm checkpoints). |
@@ -681,7 +680,6 @@ sensVeridian/
 ├── pyproject.toml
 ├── README.md
 ├── USAGE.md                           <-- this file
-├── sensveridian.duckdb                <-- created on first run
 ├── cache/
 │   ├── augmentations/<run_id>_<hex>/  <-- generated images
 │   ├── bg_plates/                     <-- inpainted backgrounds
@@ -702,6 +700,6 @@ sensVeridian/
 │   ├── hashing.py                     <-- sha256 helpers
 │   ├── runners/                       <-- oracle runners
 │   ├── augmentation/                  <-- depth/segment/inpaint/distance_sweep
-│   └── store/                         <-- DuckDB + Redis
+│   └── store/                         <-- PostgreSQL (pg/pg_async) + Redis
 └── tests/
 ```

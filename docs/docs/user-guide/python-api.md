@@ -27,14 +27,16 @@ store.export_parquet("/tmp/results.parquet")
 
 ## Core Classes
 
-### DuckStore
+### PgStore
 
-Database abstraction layer for DuckDB.
+Synchronous database abstraction layer for PostgreSQL (the API uses the async
+`sensveridian.store.pg_async.AsyncPgStore`).
 
 ```python
-from sensveridian.store.duck import DuckStore
+from sensveridian.store.pg import PgStore
+from sensveridian.config import SETTINGS
 
-store = DuckStore(db_path="./sensveridian.duckdb")
+store = PgStore(SETTINGS.database_url)
 
 # Query
 df = store.query_df("SELECT * FROM predictions_summary WHERE model_id='amod'")
@@ -193,7 +195,7 @@ image_id, width, height = hash_decoded_image(image)
 ```python
 from sensveridian.config import SETTINGS, ModelPaths
 
-print(SETTINGS.db_path)      # ./sensveridian.duckdb
+print(SETTINGS.database_url)  # postgresql+asyncpg://veridian:veridian@localhost:5432/sensveridian
 print(SETTINGS.redis_url)    # redis://localhost:6379/0
 print(ModelPaths.amod)       # /data3/.../amod.h5
 ```

@@ -28,9 +28,9 @@ def _mock_runner(model_id: str, out: RunnerOutput):
     return runner
 
 
-def _build_orch(duck_store, file_registry, monkeypatch) -> Orchestrator:
+def _build_orch(pg_store, file_registry, monkeypatch) -> Orchestrator:
     monkeypatch.setattr("sensveridian.orchestrator.hash_file", lambda _p: "sha-test")
-    orch = Orchestrator(store=duck_store, registry=file_registry)
+    orch = Orchestrator(store=pg_store, registry=file_registry)
     fd_out = RunnerOutput(
         summary=Summary(True, 1, {"n_FD": 1}),
         raw={
@@ -47,12 +47,12 @@ def _build_orch(duck_store, file_registry, monkeypatch) -> Orchestrator:
     return orch
 
 
-def test_orchestrator_ingest_skip_existing_and_force(tmp_path: Path, duck_store, file_registry, monkeypatch) -> None:
+def test_orchestrator_ingest_skip_existing_and_force(tmp_path: Path, pg_store, file_registry, monkeypatch) -> None:
     _write_image(tmp_path / "a.png", (255, 0, 0))
     _write_image(tmp_path / "b.jpg", (0, 255, 0))
     (tmp_path / "ignore.txt").write_text("not an image", encoding="utf-8")
 
-    orch = _build_orch(duck_store, file_registry, monkeypatch)
+    orch = _build_orch(pg_store, file_registry, monkeypatch)
     selected = {"amod", "qrcode", "fd", "fr"}
     res1 = orch.ingest(tmp_path, run_id="r1", selected_models=selected, skip_existing=True)
     assert res1.images_seen == 2
@@ -70,16 +70,16 @@ def test_orchestrator_ingest_skip_existing_and_force(tmp_path: Path, duck_store,
     assert res3.predictions_written == 8
 
     # Raw payload for FD should strip crops and keep crop_count.
-    fd_raw = duck_store.query_df("select payload from predictions_raw where model_id='fd' limit 1")
+    fd_raw = pg_store.query_df("select payload from predictions_raw where model_id='fd' limit 1")
     payload = fd_raw.iloc[0]["payload"]
     payload_str = str(payload)
     assert "crop_count" in payload_str
     assert "crops" not in payload_str
 
 
-def test_orchestrator_order_and_no_fr_call_when_not_selected(tmp_path: Path, duck_store, file_registry, monkeypatch) -> None:
+def test_orchestrator_order_and_no_fr_call_when_not_selected(tmp_path: Path, pg_store, file_registry, monkeypatch) -> None:
     _write_image(tmp_path / "x.png", (123, 50, 200))
-    orch = _build_orch(duck_store, file_registry, monkeypatch)
+    orch = _build_orch(pg_store, file_registry, monkeypatch)
 
     assert orch._ordered_models({"fr", "fd", "qrcode", "amod"}) == ["amod", "qrcode", "fd", "fr"]
     assert orch._ordered_models({"fd", "amod"}) == ["amod", "fd"]

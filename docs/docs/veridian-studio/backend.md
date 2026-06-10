@@ -4,7 +4,38 @@ The Veridian Studio backend is a thin FastAPI layer over the existing
 sensVeridian pipeline. The studio front-end is **served by the backend** at
 `/studio` and talks to it over REST + WebSocket. You pick a folder of images (or
 videos) on disk, run the oracle models, watch progress, and review the
-predictions on the real images — all backed by PostgreSQL.
+predictions on the real images — all backed by **PostgreSQL** (DuckDB has been
+fully removed; PostgreSQL is the single backend).
+
+## Two operating paths
+
+Every dataset carries a `mode` that selects one of two workflows:
+
+| | **Path 1 — Curate** (`mode='curate'`) | **Path 2 — Evaluate** (`mode='eval'`, default) |
+|---|---|---|
+| Inputs | Images (+ optional label files) | Images **+** existing ground-truth labels |
+| Models | Run for **candidate** boxes | Run for **predictions** scored vs GT |
+| Human action | Verify / edit / reject predicted boxes | Inspect; adjust the class-map |
+| Output | **Overwrites the label files** of verified images in place (one-time `.bak`) + updates `gt_boxes` | **Computes Predicted-vs-GT metrics**, populates `eval_metrics`; **never writes a label file** |
+| Endpoint | `POST /datasets/{id}/images/{imageId}/commit-labels` (curate only) | `POST /datasets/{id}/metrics:compute`, `GET /datasets/{id}/metrics` |
+
+Both paths share one foundation — **label files are parsed into `gt_boxes` and
+matched to frames by filename → sha** at ingest — so imported ground truth lights
+up in the canvas and feeds fusion regardless of mode.
+
+### Class alignment (per-dataset class-map)
+
+A dataset's GT label vocabulary rarely equals the model's class names
+(e.g. the FaceDetection eval set labels faces as `"Human face"` while the `fd`
+model emits `"face"`). Each dataset stores a `class_map` (`{gt_label →
+model_class}`):
+
+- ingest seeds a best-effort map (case-insensitive substring) via
+  `api.classmaps.auto_class_map`;
+- the UI edits it (`PUT /datasets/{id}/class-map`); existing edits always win
+  over re-seeding;
+- fusion drops GT whose label is unmapped and relabels the rest to the model
+  class, so match / miss / fp / metrics compare like with like.
 
 ## Architecture
 
@@ -62,16 +93,26 @@ src/sensveridian/
 ## Local-folder ingest (images + videos)
 
 `POST /ingest/jobs` with `source:"local"` and groups carrying a `path` (relative
-to the datasets root), `models`, `maxImages`, and `kind`:
+to the datasets root), `models`, `maxImages`, `kind`, plus `mode`
+(`curate`/`eval`), `reingest`, and an optional `run_id`:
 
 - **Images** — the first `maxImages` files are symlink-staged into a per-run dir
   (so the model weights hash once) and `Orchestrator.ingest` runs over them.
 - **Videos** — sampled to frames with the OpenCV target-fps stride sampler, then
   `Orchestrator.ingest` runs over the frames.
+- **Ground-truth labels** — a sibling `labels/` (+ `dataset.yaml`) is detected,
+  parsed (`ingest/label_io.py`), and stored in `gt_boxes` with `image_id` set
+  (filename → sha), so imported GT lights up in the canvas.
+- **Re-ingest** — `reingest:true` sets `skip_existing=false` so a fixed set is
+  reprocessed (and predictions overwritten); pair with a `run_id` for A/B runs
+  that feed the regression screen.
+- **Eval metrics** — at the end of an ingest with imported GT, per-model
+  Predicted-vs-GT metrics are computed and written to `eval_metrics` (and the
+  latest is mirrored onto the current `model_version`).
 - Each frame is dataset-tagged; with a `trustThreshold`, confident detections
-  are auto-accepted into the ground-truth layer; the summary matview is
-  refreshed. Progress streams over `WS /ws/jobs/{jobId}` (in-process in dev;
-  Redis pub/sub under arq in prod).
+  are auto-accepted; the summary matview is refreshed. Progress streams over
+  `WS /ws/jobs/{jobId}` (in-process bus in dev; Redis pub/sub when an arq worker
+  is live).
 
 ## Model catalogue
 
@@ -89,8 +130,22 @@ uvicorn sensveridian.api.main:app --port 8000
 # open the UI:
 xdg-open http://localhost:8000/studio
 # ingest worker (prod, Redis-backed). Dev runs in-process — no worker needed.
-VERIDIAN_USE_ARQ=1 arq sensveridian.ingest.worker.WorkerSettings
+arq sensveridian.ingest.worker.WorkerSettings
 ```
+
+### Seamless Redis
+
+Redis backs both the face registry and the arq ingest queue, and the integration
+is **auto-detecting** — no flag required:
+
+- `worker.use_arq()` returns true when a **live arq worker** is present (its
+  Redis health-check key exists); otherwise ingest runs in-process in a thread.
+- When arq drives the job, `run_ingest` publishes progress frames to Redis
+  pub/sub and `WS /ws/jobs/{id}` subscribes to them; otherwise the WS reads the
+  in-process bus. Both yield identical frames.
+- `VERIDIAN_USE_ARQ=1|0` forces the decision either way; `/health` reports live
+  `redis` + `arq` status. `FaceRegistry` falls back to a JSON file when Redis is
+  unreachable (timeout via `SV_REDIS_CONNECT_TIMEOUT`).
 
 ## Endpoints
 
@@ -104,9 +159,14 @@ VERIDIAN_USE_ARQ=1 arq sensveridian.ingest.worker.WorkerSettings
 | GET | `/datasets/{id}/images/{imageId}/predictions` | fusion narrowed by run/model |
 | GET | `/datasets/{id}/clips/{clipId}` · `/layers` | audio clips · layers |
 | POST | `/datasets:import` | parse labels → GT layer + lint |
+| GET | `/datasets/{id}/metrics` · POST `:compute` | Path 2 metrics (P/R/F1/agreement + COCO mAP) |
+| PUT | `/datasets/{id}/class-map` | edit GT-label → model-class alignment |
+| POST | `/datasets/{id}/images/{imageId}/commit-labels` | **Path 1** write-back (curate only; eval → 409) |
+| GET | `/queue` | cross-dataset review queue (conflicts, lowest conf first) |
 | GET | `/models` · `/models/{id}/regressions` · POST `:promote` | model catalogue |
 | PUT | `/reviews/{targetId}` · POST `/reviews:bulk` | human verdicts |
 | GET | `/lineage` · POST `/connections` | provenance DAG · watched local folder |
+| GET | `/health` | `{storage, redis, arq}` status |
 
 ## Detection decoding — per-model interpreters
 
@@ -135,8 +195,6 @@ available.
 
 ## Remaining seams (require live infrastructure)
 
-- **arq/Redis progress in production** — dev streams over an in-process bus; the
-  arq worker publishes to Redis pub/sub (`worker.redis_progress_stream`).
 - **Connection watchers** — `POST /connections` records a watched local folder;
   a cron/inotify watcher that auto-creates ingest jobs is a seam.
 - **AED model weights** — `runners/aed.py` uses an energy-based placeholder;

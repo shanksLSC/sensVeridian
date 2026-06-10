@@ -48,13 +48,51 @@ class AsyncPgStore:
     async def get_dataset_row(self, dataset_id: str) -> Optional[dict]:
         res = await self.s.execute(
             text(
-                "SELECT dataset_id AS id, name, descr AS desc, kind, models, palette, run_id AS \"runId\" "
+                "SELECT dataset_id AS id, name, descr AS desc, kind, models, palette, "
+                "run_id AS \"runId\", mode, label_format, labels_dir, class_names, class_map "
                 "FROM datasets WHERE dataset_id = :d"
             ),
             {"d": dataset_id},
         )
         r = res.mappings().first()
-        return dict(r) if r else None
+        if not r:
+            return None
+        row = dict(r)
+        row["class_names"] = _loads(row.get("class_names"))
+        row["class_map"] = _loads(row.get("class_map"))
+        return row
+
+    async def dataset_class_map(self, dataset_id: str) -> Optional[dict]:
+        res = await self.s.execute(
+            text("SELECT class_map FROM datasets WHERE dataset_id = :d"), {"d": dataset_id}
+        )
+        return _loads(res.scalar())
+
+    async def set_class_map(self, dataset_id: str, class_map: dict) -> None:
+        """Persist the per-dataset GT-label -> model-class alignment (UI editor)."""
+        await self.s.execute(
+            text("UPDATE datasets SET class_map = CAST(:m AS jsonb) WHERE dataset_id = :d"),
+            {"m": json.dumps(class_map or {}), "d": dataset_id},
+        )
+        await self.s.commit()
+
+    async def get_eval_metrics(self, dataset_id: str) -> list[dict]:
+        """Stored Path-2 metrics for a dataset (one row per model+run)."""
+        res = await self.s.execute(
+            text(
+                "SELECT dataset_id AS \"datasetId\", model_id AS model, run_id AS \"runId\", "
+                "metrics, computed_at AS \"computedAt\" FROM eval_metrics "
+                "WHERE dataset_id = :d ORDER BY model_id, run_id"
+            ),
+            {"d": dataset_id},
+        )
+        out: list[dict] = []
+        for r in res.mappings().all():
+            row = dict(r)
+            row["metrics"] = _loads(row.get("metrics")) or {}
+            row["computedAt"] = str(row["computedAt"]) if row.get("computedAt") else ""
+            out.append(row)
+        return out
 
     async def get_image_row(self, image_id: str) -> Optional[dict]:
         res = await self.s.execute(
@@ -134,10 +172,69 @@ class AsyncPgStore:
         preds = await self._preds_by_model(image_id, run_id, model_id)
         reviews = await self._reviews_for_dataset(dataset_id)
         gt_items = await self._gt_items_for_image(image_id)
+        class_map = await self.dataset_class_map(dataset_id)
         return fusion.fuse_detections(
             image_id, preds, int(img["width"] or 0), int(img["height"] or 0),
-            gt_items=gt_items, reviews=reviews,
+            gt_items=gt_items, reviews=reviews, class_map=class_map,
         )
+
+    # ---- Path 1: curation write-back --------------------------------------
+    async def build_committed_gt(self, dataset_id: str, image_id: str,
+                                 run_id: str = "baseline") -> Optional[dict]:
+        """Derive the human-verified ground truth for one image from predictions
+        + imported GT + review verdicts, in the dataset's own label vocabulary.
+
+        Curation semantics (the human curates *predicted* boxes):
+        - rejected prediction -> not GT; if it overlapped an imported GT box,
+          that GT box is dropped too (the human overrode it);
+        - edited prediction -> its corrected box becomes GT;
+        - accepted / matched prediction -> becomes GT (keeping the imported GT
+          label when it matches one, else the model class mapped back through the
+          class-map);
+        - imported GT boxes no prediction touched are kept verbatim.
+
+        Returns ``{ds, path, boxes:[{cls, box}]}`` or None if the image/dataset
+        is missing. Class alignment uses the inverse of the dataset class-map so
+        boxes are written in the label file's vocabulary.
+        """
+        ds = await self.get_dataset_row(dataset_id)
+        img = await self.get_image_row(image_id)
+        if not ds or not img:
+            return None
+        preds_by_model = await self._preds_by_model(image_id, run_id)
+        gt_items = await self._gt_items_for_image(image_id)
+        reviews = await self._reviews_for_dataset(dataset_id)
+        boxes = fusion.committed_gt(
+            image_id, preds_by_model, int(img["width"] or 0), int(img["height"] or 0),
+            gt_items=gt_items, reviews=reviews, class_map=ds.get("class_map") or {},
+        )
+        return {"ds": ds, "path": img["path"], "boxes": boxes}
+
+    async def replace_image_gt(self, layer_id: str, dataset_id: str, image_id: str,
+                               image_ref: str, anns: list[dict]) -> int:
+        """Async twin of PgStore.replace_image_gt: replace one image's GT boxes
+        in a layer (delete + insert). Boxes clamped to [0,1]. Caller commits."""
+        await self.s.execute(
+            text("DELETE FROM gt_boxes WHERE layer_id = :l AND image_id = :i"),
+            {"l": layer_id, "i": image_id},
+        )
+        n = 0
+        for a in anns:
+            box = a.get("box") or [0, 0, 0, 0]
+            x, y, w, h = (max(0.0, min(1.0, float(v))) for v in box[:4])
+            await self.s.execute(
+                text(
+                    """
+                    INSERT INTO gt_boxes (layer_id, dataset_id, image_id, image_ref, cls, box, meta)
+                    VALUES (:l, :d, :i, :r, :c, CAST(:b AS jsonb), CAST(:m AS jsonb))
+                    """
+                ),
+                {"l": layer_id, "d": dataset_id, "i": image_id, "r": image_ref,
+                 "c": a.get("cls"), "b": json.dumps([x, y, w, h]),
+                 "m": json.dumps(a.get("meta") or {})},
+            )
+            n += 1
+        return n
 
     @staticmethod
     def image_src(dataset_id: str, image_id: str) -> str:
@@ -179,6 +276,7 @@ class AsyncPgStore:
             {"d": dataset_id, "off": offset, "lim": limit},
         )
         reviews = await self._reviews_for_dataset(dataset_id)
+        class_map = await self.dataset_class_map(dataset_id)
         out = []
         for r in rows.mappings().all():
             image_id = r["image_id"]
@@ -187,7 +285,7 @@ class AsyncPgStore:
             gt_items = await self._gt_items_for_image(image_id)
             objects = fusion.fuse_detections(
                 image_id, preds, int(r["width"] or 0), int(r["height"] or 0),
-                gt_items=gt_items, reviews=reviews,
+                gt_items=gt_items, reviews=reviews, class_map=class_map,
             )
             roll = fusion.image_rollup(objects)
             out.append(
@@ -207,6 +305,37 @@ class AsyncPgStore:
                 }
             )
         return out
+
+    async def review_queue(self, limit: int = 200) -> list[dict]:
+        """Cross-dataset triage list: every prediction↔GT disagreement, lowest
+        confidence first. Bounded so it does not fuse unbounded data — caps the
+        images scanned per dataset and stops once enough rows are collected."""
+        rows: list[dict] = []
+        ds = await self.s.execute(
+            text("SELECT dataset_id, name, run_id, kind FROM datasets ORDER BY created_at")
+        )
+        for d in ds.mappings().all():
+            if d["kind"] == "audio":
+                continue
+            run_id = d["run_id"] or "baseline"
+            imgs = await self.s.execute(
+                text("SELECT image_id FROM images WHERE dataset_id = :d ORDER BY ingested_at LIMIT 500"),
+                {"d": d["dataset_id"]},
+            )
+            for r in imgs.mappings().all():
+                dets = await self.build_image_detections(d["dataset_id"], r["image_id"], run_id)
+                for o in dets:
+                    if o.get("state") != "match":
+                        rows.append({
+                            "datasetId": d["dataset_id"], "datasetName": d["name"],
+                            "imageId": r["image_id"], "cls": o.get("cls"),
+                            "state": o.get("state"), "conf": float(o.get("conf") or 0.0),
+                            "iou": float(o.get("iou") or 0.0), "detId": o.get("id"),
+                        })
+                if len(rows) >= limit * 3:
+                    break
+        rows.sort(key=lambda x: x["conf"])
+        return rows[:limit]
 
     async def _image_status(self, dataset_id: str, image_id: str, meta: dict) -> str:
         """Status from the frame-level review (img:<id>), else metadata, else

@@ -4,9 +4,9 @@
 
 1. **Image Ingestion**: Recursive folder scan with format detection (.jpg, .png, .bmp, .webp)
 2. **Oracle Models**: Run selected subset of 4 configurable models
-3. **Result Storage**: Summary + raw JSON tiers in DuckDB
+3. **Result Storage**: Summary + raw JSONB tiers in PostgreSQL
 4. **Face Matching**: Redis-backed or file-fallback registry with cosine similarity
-5. **Query API**: SQL against DuckDB; export to Parquet for analytics
+5. **Query API**: SQL against PostgreSQL; export to Parquet for analytics
 
 ## Oracle Models (in scope)
 
@@ -19,7 +19,7 @@
 
 ## Storage
 
-- **DuckDB** — Queryable ground-truth cache (single-file, embedded, no server)
+- **PostgreSQL** — Queryable ground-truth cache (sync `PgStore` + async `AsyncPgStore`)
 - **Redis** — Registered-faces lookup (with file-backed fallback if unavailable)
 - **Filesystem** — Augmented images, inpainted backgrounds, depth maps
 

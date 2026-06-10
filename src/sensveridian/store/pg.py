@@ -27,8 +27,8 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection, Engine
 
-# Re-exported so callers can build summaries without importing duck.py.
-from .duck import SummaryRow  # noqa: F401
+# Re-exported so callers can build summaries from the store package.
+from .types import SummaryRow  # noqa: F401
 
 DEFAULT_SCHEMA = Path(__file__).resolve().parent / "schema_pg.sql"
 
@@ -49,12 +49,21 @@ class PgStore:
         accepted and rewritten to the sync driver for convenience.
     schema_path:
         Path to ``schema_pg.sql`` (defaults to the file next to this module).
+    schema:
+        Optional PostgreSQL schema to place + resolve all objects in (sets the
+        connection ``search_path`` to ``<schema>,public``). Used by the test
+        suite to isolate a ``sv_test`` schema from the live ``public`` data
+        without needing a separate database / CREATEDB privilege.
     """
 
-    def __init__(self, database_url: str, schema_path: Path | str = DEFAULT_SCHEMA):
+    def __init__(self, database_url: str, schema_path: Path | str = DEFAULT_SCHEMA,
+                 schema: Optional[str] = None):
         self.database_url = sync_url(database_url)
         self.schema_path = Path(schema_path)
-        self.engine: Engine = create_engine(self.database_url, future=True, pool_pre_ping=True)
+        self.schema = schema
+        connect_args = {"options": f"-csearch_path={schema},public"} if schema else {}
+        self.engine: Engine = create_engine(self.database_url, future=True,
+                                            pool_pre_ping=True, connect_args=connect_args)
         self._con: Optional[Connection] = None
 
     # ---- connection management (mirrors DuckStore's single-connection model) --
@@ -75,6 +84,8 @@ class PgStore:
     def migrate(self) -> None:
         """Apply schema_pg.sql. The canonical path in production is
         ``psql -f schema_pg.sql``; this is the convenience equivalent."""
+        if self.schema:
+            self.con.exec_driver_sql(f'CREATE SCHEMA IF NOT EXISTS "{self.schema}"')
         sql = self.schema_path.read_text(encoding="utf-8")
         # exec_driver_sql sends the script straight to the DBAPI driver, which
         # accepts multiple ';'-separated statements in one call.
@@ -277,16 +288,29 @@ class PgStore:
         models: Optional[list[str]] = None,
         palette: Optional[str] = None,
         run_id: Optional[str] = None,
+        mode: str = "eval",
+        label_format: Optional[str] = None,
+        labels_dir: Optional[str] = None,
+        class_names: Optional[dict] = None,
+        class_map: Optional[dict] = None,
     ) -> None:
         self.con.execute(
             text(
                 """
-                INSERT INTO datasets (dataset_id, name, descr, kind, models, palette, run_id)
-                VALUES (:id, :name, :descr, :kind, :models, :palette, :run_id)
+                INSERT INTO datasets (dataset_id, name, descr, kind, models, palette, run_id,
+                                      mode, label_format, labels_dir, class_names, class_map)
+                VALUES (:id, :name, :descr, :kind, :models, :palette, :run_id,
+                        :mode, :lfmt, :ldir, CAST(:cnames AS jsonb), CAST(:cmap AS jsonb))
                 ON CONFLICT (dataset_id) DO UPDATE
                 SET name = excluded.name, descr = excluded.descr, kind = excluded.kind,
                     models = excluded.models, palette = excluded.palette,
-                    run_id = COALESCE(excluded.run_id, datasets.run_id)
+                    run_id = COALESCE(excluded.run_id, datasets.run_id),
+                    mode = excluded.mode,
+                    label_format = COALESCE(excluded.label_format, datasets.label_format),
+                    labels_dir = COALESCE(excluded.labels_dir, datasets.labels_dir),
+                    class_names = COALESCE(excluded.class_names, datasets.class_names),
+                    -- existing (UI-edited) class_map wins; only seed when unset
+                    class_map = COALESCE(datasets.class_map, excluded.class_map)
                 """
             ),
             {
@@ -297,8 +321,127 @@ class PgStore:
                 "models": models or [],
                 "palette": palette,
                 "run_id": run_id,
+                "mode": mode,
+                "lfmt": label_format,
+                "ldir": labels_dir,
+                "cnames": _json(class_names) if class_names is not None else None,
+                "cmap": _json(class_map) if class_map is not None else None,
             },
         )
+
+    def set_class_map(self, dataset_id: str, class_map: dict) -> None:
+        self.con.execute(
+            text("UPDATE datasets SET class_map = CAST(:m AS jsonb) WHERE dataset_id = :d"),
+            {"m": _json(class_map), "d": dataset_id},
+        )
+
+    def upsert_eval_metrics(self, dataset_id: str, model_id: str, run_id: str, metrics: dict) -> None:
+        self.con.execute(
+            text(
+                """
+                INSERT INTO eval_metrics (dataset_id, model_id, run_id, metrics, computed_at)
+                VALUES (:d, :m, :r, CAST(:met AS jsonb), now())
+                ON CONFLICT (dataset_id, model_id, run_id) DO UPDATE
+                SET metrics = excluded.metrics, computed_at = now()
+                """
+            ),
+            {"d": dataset_id, "m": model_id, "r": run_id, "met": _json(metrics)},
+        )
+
+    def compute_eval_metrics(self, dataset_id: str, model_id: str, run_id: str = "baseline") -> dict:
+        """Build per-image (pred vs mapped-GT) samples for one model+run over a
+        dataset, compute Path-2 metrics, and persist them to ``eval_metrics``.
+
+        Synchronous twin of the API's on-demand compute, used at the end of an
+        ``eval`` ingest. The pure metric math lives in
+        :mod:`sensveridian.api.metrics`; prediction decoding + GT class
+        alignment reuse :mod:`sensveridian.api.fusion`.
+        """
+        from ..api import fusion
+        from ..api import metrics as M
+
+        def _esc(s: Any) -> str:
+            return str(s).replace("'", "''")
+
+        def _obj(v: Any) -> Any:
+            if isinstance(v, str):
+                try:
+                    return json.loads(v)
+                except Exception:
+                    return None
+            return v
+
+        did, mid, rid = _esc(dataset_id), _esc(model_id), _esc(run_id)
+
+        cm = self.query_df(f"SELECT class_map FROM datasets WHERE dataset_id = '{did}'")
+        class_map = _obj(cm.iloc[0]["class_map"]) if not cm.empty else None
+
+        imgs = self.query_df(f"SELECT image_id, width, height FROM images WHERE dataset_id = '{did}'")
+        samples: list[dict] = []
+        for _, im in imgs.iterrows():
+            iid = _esc(im["image_id"])
+            w = int(im["width"] or 0)
+            h = int(im["height"] or 0)
+            pr = self.query_df(
+                "SELECT payload FROM predictions_raw "
+                f"WHERE image_id = '{iid}' AND run_id = '{rid}' AND model_id = '{mid}'"
+            )
+            payload = _obj(pr.iloc[0]["payload"]) if not pr.empty else {}
+            preds = fusion.extract_pred_detections(model_id, payload or {}, w, h)
+            gtd = self.query_df(
+                f"SELECT cls, box FROM gt_boxes WHERE dataset_id = '{did}' AND image_id = '{iid}'"
+            )
+            gt: list[dict] = []
+            for _, g in gtd.iterrows():
+                cls = g["cls"]
+                box = _obj(g["box"])
+                if class_map:
+                    if cls not in class_map:
+                        continue  # GT class the model never predicts -> ignore
+                    cls = class_map[cls]
+                if box:
+                    gt.append({"box": box, "cls": cls})
+            samples.append(
+                {
+                    "preds": [
+                        {"box": p["box"], "cls": p["cls"], "conf": p.get("conf", 0.0)}
+                        for p in preds
+                        if p.get("box")
+                    ],
+                    "gt": gt,
+                }
+            )
+
+        result = M.compute_metrics(samples)
+        self.upsert_eval_metrics(dataset_id, model_id, run_id, result)
+        return result
+
+    def replace_image_gt(self, layer_id: str, dataset_id: str, image_id: str,
+                         image_ref: str, anns: list[dict]) -> int:
+        """Replace the ground-truth boxes for one image (idempotent on
+        re-ingest): delete this image's rows in the layer, then insert ``anns``
+        (each ``{cls, box:[x,y,w,h] normalized}``). Returns the count inserted."""
+        self.con.execute(
+            text("DELETE FROM gt_boxes WHERE layer_id = :lid AND image_id = :iid"),
+            {"lid": layer_id, "iid": image_id},
+        )
+        n = 0
+        for a in anns:
+            box = a.get("box") or [0, 0, 0, 0]
+            x, y, w, h = (max(0.0, min(1.0, float(v))) for v in box[:4])
+            self.con.execute(
+                text(
+                    """
+                    INSERT INTO gt_boxes (layer_id, dataset_id, image_id, image_ref, cls, box, meta)
+                    VALUES (:lid, :did, :iid, :iref, :cls, CAST(:box AS jsonb), CAST(:meta AS jsonb))
+                    """
+                ),
+                {"lid": layer_id, "did": dataset_id, "iid": image_id, "iref": image_ref,
+                 "cls": a.get("cls"), "box": _json([x, y, w, h]),
+                 "meta": _json(a.get("meta") or {})},
+            )
+            n += 1
+        return n
 
     def register_model_card(
         self,
@@ -367,6 +510,20 @@ class PgStore:
                 "notes": notes,
                 "cur": is_current,
             },
+        )
+
+    def set_model_version_metrics(self, model_id: str, metrics: dict) -> None:
+        """Update only the current model_version's metrics blob (no change to
+        ``is_current``). Used to surface the latest eval metrics in the model
+        manager; ``eval_metrics`` remains the per-dataset source of truth."""
+        self.con.execute(
+            text(
+                """
+                UPDATE model_versions SET metrics = CAST(:m AS jsonb)
+                WHERE model_id = :mid AND is_current = TRUE
+                """
+            ),
+            {"m": _json(metrics), "mid": model_id},
         )
 
     def upsert_layer(

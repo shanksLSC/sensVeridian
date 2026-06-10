@@ -132,3 +132,57 @@ def test_detection_image_id_roundtrip():
     assert fusion.detection_image_id("abc123_amod_0") == "abc123"
     assert fusion.detection_image_id("flip:abc123_fr_2") == "abc123"
     assert fusion.detection_image_id("img:abc123") is None  # caller handles img: ids
+
+
+# ---- committed_gt (Path 1 curation write-back) -----------------------------
+def _amod(bbox, class_id=1, conf=0.9):
+    return {"amod": {"detections": [{"bbox": bbox, "conf": conf, "class_id": class_id}]}}
+
+
+def test_committed_gt_provisional_writes_unreviewed_pred():
+    # no GT layer -> a non-rejected prediction is written as GT (auto-label)
+    out = fusion.committed_gt("im", _amod([0.1, 0.1, 0.6, 0.6]), 100, 100)
+    assert out == [{"cls": "car", "box": pytest.approx([0.1, 0.1, 0.5, 0.5])}]
+
+
+def test_committed_gt_rejected_pred_is_dropped():
+    out = fusion.committed_gt("im", _amod([0.1, 0.1, 0.6, 0.6]), 100, 100,
+                              reviews={"im_amod_0": {"verdict": "rejected"}})
+    assert out == []
+
+
+def test_committed_gt_edited_box_is_used():
+    out = fusion.committed_gt("im", _amod([0.1, 0.1, 0.6, 0.6]), 100, 100,
+                              reviews={"im_amod_0": {"verdict": "edited", "box": [0.2, 0.2, 0.3, 0.3]}})
+    assert out == [{"cls": "car", "box": [0.2, 0.2, 0.3, 0.3]}]
+
+
+def test_committed_gt_match_keeps_label_vocabulary():
+    # pred matches imported GT -> keep the GT's own label ("vehicle"), pred box
+    gt = [{"cls": "vehicle", "box": [0.1, 0.1, 0.5, 0.5]}]
+    out = fusion.committed_gt("im", _amod([0.1, 0.1, 0.6, 0.6]), 100, 100,
+                              gt_items=gt, class_map={"vehicle": "car"})
+    assert out == [{"cls": "vehicle", "box": pytest.approx([0.1, 0.1, 0.5, 0.5])}]
+
+
+def test_committed_gt_unmatched_unaccepted_pred_skipped_gt_kept():
+    gt = [{"cls": "vehicle", "box": [0.1, 0.1, 0.5, 0.5]}]
+    out = fusion.committed_gt("im", _amod([0.7, 0.7, 0.9, 0.9]), 100, 100, gt_items=gt)
+    assert out == [{"cls": "vehicle", "box": [0.1, 0.1, 0.5, 0.5]}]
+
+
+def test_committed_gt_accepted_new_pred_uses_inverse_class_map():
+    gt = [{"cls": "vehicle", "box": [0.1, 0.1, 0.5, 0.5]}]
+    out = fusion.committed_gt("im", _amod([0.7, 0.7, 0.9, 0.9]), 100, 100, gt_items=gt,
+                              reviews={"im_amod_0": {"verdict": "accepted"}},
+                              class_map={"vehicle": "car"})
+    assert {"cls": "vehicle", "box": pytest.approx([0.7, 0.7, 0.2, 0.2])} in out
+    assert {"cls": "vehicle", "box": [0.1, 0.1, 0.5, 0.5]} in out
+    assert len(out) == 2
+
+
+def test_committed_gt_rejected_pred_overrides_matching_gt():
+    gt = [{"cls": "vehicle", "box": [0.1, 0.1, 0.5, 0.5]}]
+    out = fusion.committed_gt("im", _amod([0.1, 0.1, 0.6, 0.6]), 100, 100, gt_items=gt,
+                              reviews={"im_amod_0": {"verdict": "rejected"}})
+    assert out == []  # the GT box the rejected pred overlapped is dropped too

@@ -28,17 +28,46 @@ function buildFlips(model, vA, vB) {
 function RegressionScreen() {
   const ctx = React.useContext(VDCtx);
   const { reviews, setReview } = ctx;
+  const isRest = (window.VERIDIAN_CONFIG || {}).backend === "rest";
   const [modelId, setModelId] = React.useState(ctx.route.modelId || "amod");
   const model = window.VD.models.find((m) => m.id === modelId) || window.VD.models[0];
-  const [aV, setAV] = React.useState(model.versions[1].version);
-  const [bV, setBV] = React.useState(model.versions[0].version);
+  // real models may carry a single version -> guard versions[1]
+  const versions = (model.versions && model.versions.length)
+    ? model.versions : [{ version: "current", date: "", metrics: {}, weights_sha: "" }];
+  const defB = versions[0];
+  const defA = versions[1] || versions[0];
+  const [aV, setAV] = React.useState(defA.version);
+  const [bV, setBV] = React.useState(defB.version);
   const [filter, setFilter] = React.useState("regress");
 
-  React.useEffect(() => { setAV(model.versions[1].version); setBV(model.versions[0].version); }, [modelId]);
-  const vA = model.versions.find((v) => v.version === aV) || model.versions[1];
-  const vB = model.versions.find((v) => v.version === bV) || model.versions[0];
+  React.useEffect(() => { setAV(defA.version); setBV(defB.version); }, [modelId]);
+  const vA = versions.find((v) => v.version === aV) || defA;
+  const vB = versions.find((v) => v.version === bV) || defB;
+  const ag = (v) => (v && v.metrics && typeof v.metrics.agreement === "number") ? v.metrics.agreement : 0;
+  const dAg = ag(vB) - ag(vA);
 
-  const flips = React.useMemo(() => buildFlips(model, vA, vB), [modelId, aV, bV]);
+  // Flips come from the backend (real runs vs GT) in REST mode; mock otherwise.
+  const [flips, setFlips] = React.useState([]);
+  React.useEffect(() => {
+    let alive = true;
+    if (isRest && window.VeridianAPI && window.VeridianAPI.getRegressions) {
+      window.VeridianAPI.getRegressions(model.id, aV, bV)
+        .then((rows) => {
+          if (!alive) return;
+          setFlips((rows || []).map((r) => {
+            const d = window.VD.getDataset(r.datasetId) || { id: r.datasetId, name: r.datasetId };
+            const im = (d.images || []).find((x) => x.id === r.imageId) || { id: r.imageId, datasetId: r.datasetId };
+            return { d, im, o: { id: r.detId, cls: r.cls, gt: null, pred: null },
+                     regress: !!r.regress, confA: r.confA, confB: r.confB };
+          }));
+        })
+        .catch((e) => { console.warn("[veridian] regressions load failed", e); if (alive) setFlips([]); });
+    } else {
+      setFlips(buildFlips(model, vA, vB));
+    }
+    return () => { alive = false; };
+  }, [modelId, aV, bV, isRest]);
+
   const regressions = flips.filter((f) => f.regress);
   const fixes = flips.filter((f) => !f.regress);
   const shown = filter === "regress" ? regressions : filter === "fix" ? fixes : flips;
@@ -66,10 +95,10 @@ function RegressionScreen() {
               <span style={{ fontSize: 11.5, color: "var(--tx-2)" }}>candidate</span>
               <select value={bV} onChange={(e) => setBV(e.target.value)} className="mono" style={{ background: "var(--bg-3)", border: "1px solid var(--accent)", borderRadius: 6, color: "var(--tx-0)", padding: "6px 9px", fontSize: 12 }}>{model.versions.map((v) => <option key={v.version} value={v.version}>v{v.version} · {v.date}</option>)}</select>
               <div style={{ flex: 1 }} />
-              <span className="mono" style={{ fontSize: 11, color: "var(--tx-2)" }}>{vB.weights_sha.slice(0, 12)}…</span>
+              <span className="mono" style={{ fontSize: 11, color: "var(--tx-2)" }}>{(vB.weights_sha || "").slice(0, 12)}…</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
-              <FlipStat icon="trend" label="Net agreement Δ" v={(vB.metrics.agreement - vA.metrics.agreement >= 0 ? "+" : "") + ((vB.metrics.agreement - vA.metrics.agreement) * 100).toFixed(1) + "%"} c={vB.metrics.agreement >= vA.metrics.agreement ? "var(--match)" : "var(--conflict)"} />
+              <FlipStat icon="trend" label="Net agreement Δ" v={(dAg >= 0 ? "+" : "") + (dAg * 100).toFixed(1) + "%"} c={dAg >= 0 ? "var(--match)" : "var(--conflict)"} />
               <FlipStat icon="alert" label="Regressions" v={regressions.length} c="var(--conflict)" sub="was right → now wrong" />
               <FlipStat icon="spark" label="Fixes" v={fixes.length} c="var(--match)" sub="was wrong → now right" />
               <FlipStat icon="check" label="Stable" v={"—"} c="var(--tx-2)" sub="unchanged, hidden" />

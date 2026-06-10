@@ -107,6 +107,33 @@ def model_card(model_id: str) -> dict:
     return card
 
 
+def model_class_names(model_id: str) -> list[str]:
+    """All class labels a model can emit."""
+    return [class_name(model_id, i) for i in range(n_classes(model_id))]
+
+
+def auto_class_map(gt_class_names, model_ids) -> dict[str, str]:
+    """Best-effort GT-label -> model-class alignment for evaluation.
+
+    Matches each dataset GT label name to a model class name (case-insensitive
+    exact or substring either way), e.g. ``'Human face' -> 'face'``. Unmatched
+    GT labels are left out (ignored in eval); the map is editable in the UI.
+    """
+    model_classes: list[str] = []
+    for m in model_ids or []:
+        model_classes.extend(model_class_names(m))
+    names = list((gt_class_names or {}).values()) if isinstance(gt_class_names, dict) else list(gt_class_names or [])
+    cmap: dict[str, str] = {}
+    for name in names:
+        gl = str(name).lower()
+        for mc in model_classes:
+            ml = mc.lower()
+            if ml == gl or ml in gl or gl in ml:
+                cmap[str(name)] = mc
+                break
+    return cmap
+
+
 def short_name(model_id: str) -> str:
     return MODEL_CARDS.get(model_id, {}).get("short", model_id.upper())
 

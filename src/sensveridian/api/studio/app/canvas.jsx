@@ -146,6 +146,31 @@ function CanvasScreen() {
   const allObjects = [...visObjects, ...extraBoxes];
   const selObj = allObjects.find((o) => o.id === selectedId);
 
+  // operating mode (Path 1 curate writes labels; Path 2 eval is read-only)
+  const isRest = (window.VERIDIAN_CONFIG || {}).backend === "rest";
+  const mode = d.mode || "eval";
+  const [, forceRender] = React.useReducer((x) => x + 1, 0);
+  const [verifyMsg, setVerifyMsg] = React.useState(null);
+
+  const verifyFrame = async () => {
+    const ids = allObjects.map((o) => o.id);
+    ids.forEach((id) => setReview(id, { verdict: "accepted" }));  // local + persist
+    if (mode === "curate" && isRest && window.VeridianAPI && window.VeridianAPI.commitLabels) {
+      try {
+        setVerifyMsg("Writing labels…");
+        await window.VeridianAPI.bulkReview(ids, { verdict: "accepted" });  // barrier
+        const res = await window.VeridianAPI.commitLabels(d.id, image.id);
+        if (window.VD.ensureImage) await window.VD.ensureImage(d.id, image.id);
+        forceRender();
+        setVerifyMsg("Wrote " + (res && res.n != null ? res.n : "") + " labels → file");
+      } catch (e) {
+        console.warn("[veridian] commit-labels failed", e);
+        setVerifyMsg("Label write-back failed");
+      }
+      setTimeout(() => setVerifyMsg(null), 2600);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg-canvas)" }}>
       {/* top bar */}
@@ -156,6 +181,10 @@ function CanvasScreen() {
           <span style={{ fontWeight: 600, fontSize: 13 }}>{d.name}</span>
           <span className="mono" style={{ fontSize: 10.5, color: "var(--tx-2)" }}>{vhelp.shortId(image.id, 16)}{image.augmented ? " · aug" : ""}</span>
         </div>
+        <span className="chip" title={mode === "curate" ? "Curation: Verify overwrites the label file" : "Evaluation: read-only, predictions scored vs GT"}
+          style={{ borderColor: mode === "curate" ? "var(--gt)" : "var(--accent)", color: mode === "curate" ? "var(--gt)" : "var(--accent-2)" }}>
+          <Icon name={mode === "curate" ? "edit" : "shield"} size={11} />{mode === "curate" ? "Curate" : "Eval"}
+        </span>
         <div style={{ flex: 1 }} />
         <RunCompare image={image} />
         <div style={{ width: 1, height: 22, background: "var(--line)" }} />
@@ -167,7 +196,10 @@ function CanvasScreen() {
         <button className="btn sm" onClick={() => setReview("img:" + image.id, { verdict: image.status === "flagged" ? null : "flagged" })} style={{ color: reviews["img:" + image.id]?.verdict === "flagged" ? "var(--gt)" : undefined }}>
           <Icon name="flag" size={14} />Flag
         </button>
-        <button className="btn primary sm" onClick={() => { allObjects.forEach((o) => setReview(o.id, { verdict: "accepted" })); }}><Icon name="check" size={14} />Verify frame</button>
+        {verifyMsg && <span className="mono" style={{ fontSize: 10.5, color: "var(--tx-2)" }}>{verifyMsg}</span>}
+        <button className="btn primary sm" onClick={verifyFrame} title={mode === "curate" ? "Accept all + overwrite the label file (.bak kept)" : "Accept all detections as verified"}>
+          <Icon name="check" size={14} />{mode === "curate" ? "Verify & write labels" : "Verify frame"}
+        </button>
       </header>
 
       {/* body */}

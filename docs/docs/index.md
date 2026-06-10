@@ -2,12 +2,13 @@
 
 **Ground-truth cache and distance-aware augmentation pipeline for vision ML model evaluation.**
 
-sensVeridian ingests images, runs a configurable pipeline of ML oracle models on each, stores results in a queryable DuckDB cache, and can synthesize photorealistic distance-swept augmentations for robustness testing.
+sensVeridian ingests images, runs a configurable pipeline of ML oracle models on each, stores results in a queryable PostgreSQL cache, and can synthesize photorealistic distance-swept augmentations for robustness testing.
 
 ## Features
 
 - **Oracle Models**: Run AMOD, QRCode Detection, Face Detection, Face Recognition on images
-- **Queryable Cache**: DuckDB-backed storage with SQL queries and Parquet export
+- **Queryable Cache**: PostgreSQL-backed storage with SQL queries and Parquet export
+- **Veridian Studio**: FastAPI + browser UI with two paths — curate (verify → write labels back) and evaluate (Predicted-vs-GT metrics)
 - **Face Registry**: Redis-backed registered-faces lookup for FR matching
 - **Distance Augmentation**: Photorealistic distance-swept augmentations using ZoeDepth + SAM + LaMa
 - **Manual Overrides**: Specify known distances per-image or per-detection, ZoeDepth as fallback

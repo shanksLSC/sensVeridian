@@ -112,6 +112,12 @@
       return { root: "(mock)", entries: window.VD.datasets.filter((d) => d.kind !== "audio").map((d) => ({ name: d.name, path: d.id, images: d.count, videos: 0, has_labels: false, kind: "image" })) };
     },
     async getJob(jobId) { await sleep(cfg().latencyMs); return jobStore[jobId] || { jobId, status: "done" }; },
+    // Path 2 (eval metrics) + class-map + Path 1 (curation) — mock no-ops.
+    async getMetrics(datasetId) { await sleep(cfg().latencyMs); const d = window.VD.getDataset(datasetId) || {}; return { datasetId, mode: d.mode || "eval", classMap: {}, classNames: {}, models: d.models || [], metrics: [] }; },
+    async computeMetrics(datasetId /*, runId, modelId */) { await sleep(cfg().latencyMs); return { datasetId, results: [] }; },
+    async setClassMap(datasetId, classMap) { await sleep(cfg().latencyMs); return { ok: true, datasetId, classMap }; },
+    async commitLabels(datasetId, imageId /*, runId */) { await sleep(cfg().latencyMs); return { ok: true, datasetId, imageId, n: 0, boxes: [] }; },
+    async getQueue(limit) { await sleep(cfg().latencyMs); return null; },  // mock: screen falls back to local aggregation
   };
 
   /* --------------------------------------------------------------------- *
@@ -150,6 +156,21 @@
     /** List local dataset folders under the server's datasets root. */
     async browseDatasets() { return this._get("/fs/datasets"); },
     async getJob(jobId) { return this._get(`/ingest/jobs/${jobId}`); },
+
+    // ---- Path 2: evaluation metrics + class-map ----
+    async getMetrics(datasetId) { return this._get(`/datasets/${datasetId}/metrics`); },
+    async computeMetrics(datasetId, runId, modelId) {
+      const q = new URLSearchParams({ ...(runId ? { run_id: runId } : {}), ...(modelId ? { model_id: modelId } : {}) });
+      return this._send("POST", `/datasets/${datasetId}/metrics:compute?${q}`);
+    },
+    async setClassMap(datasetId, classMap) { return this._send("PUT", `/datasets/${datasetId}/class-map`, classMap); },
+    // ---- Path 1: curation label write-back ----
+    async commitLabels(datasetId, imageId, runId) {
+      const q = new URLSearchParams({ ...(runId ? { run_id: runId } : {}) });
+      return this._send("POST", `/datasets/${datasetId}/images/${imageId}/commit-labels?${q}`);
+    },
+    // ---- cross-dataset review queue ----
+    async getQueue(limit) { return this._get(`/queue${limit ? `?limit=${limit}` : ""}`); },
   };
 
   window.VeridianAPI = cfg().backend === "rest" ? RestAdapter : MockAdapter;

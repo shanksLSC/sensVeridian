@@ -9,7 +9,7 @@ from rich.table import Table
 from tqdm.auto import tqdm
 
 from .config import SETTINGS
-from .store.duck import DuckStore
+from .store.pg import PgStore
 from .store.faces_registry import FaceRegistry
 from .seed_faces import seed_dummy_faces
 from .orchestrator import Orchestrator
@@ -28,9 +28,8 @@ console = Console()
 M_TO_FT = 3.28084
 
 
-def _store() -> DuckStore:
-    schema_path = Path(__file__).resolve().parent / "store" / "schema.sql"
-    s = DuckStore(db_path=SETTINGS.db_path, schema_path=schema_path)
+def _store() -> PgStore:
+    s = PgStore(SETTINGS.database_url)
     s.migrate()
     return s
 
@@ -73,7 +72,7 @@ def ingest(
 
 
 @app.command("query")
-def query(sql: str = typer.Argument(..., help="SQL query executed on DuckDB")):
+def query(sql: str = typer.Argument(..., help="SQL query executed on PostgreSQL")):
     s = _store()
     try:
         df = s.query_df(sql)
