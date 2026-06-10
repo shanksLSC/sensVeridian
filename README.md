@@ -10,7 +10,7 @@ sensVeridian builds a queryable ground-truth cache for image evaluation pipeline
   - `FaceDetection`: `/data3/ssharma8/all-models/FaceDetection/fd_lnd_hp-fpga-8.1.0.h5`
   - `FaceRecognition`: `/data3/ssharma8/all-models/FaceRecognition/fr-fpga-8.1.1.h5`
 - Storage:
-  - PostgreSQL for analytics and model outputs.
+  - PostGres for analytics and model outputs.
   - Redis for registered faces.
 - Augmentation:
   - ZoeDepth (metric depth), SAM masks, SDXL inpainting, distance sweep generation.
