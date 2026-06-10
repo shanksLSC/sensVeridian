@@ -14,14 +14,20 @@ const METRIC_KEYS = [
 function ModelsScreen() {
   const ctx = React.useContext(VDCtx);
   const [sel, setSel] = React.useState(window.VD.models[0].id);
-  const m = window.VD.models.find((x) => x.id === sel);
-  const [a, setA] = React.useState(m.versions[1].version);
-  const [b, setB] = React.useState(m.versions[0].version);
+  const m = window.VD.models.find((x) => x.id === sel) || window.VD.models[0];
+  // real models may carry a single version -> guard versions[1]
+  const vlist = (m.versions && m.versions.length)
+    ? m.versions : [{ version: "current", date: "", metrics: {}, weights_sha: "", notes: "" }];
+  const [a, setA] = React.useState((vlist[1] || vlist[0]).version);
+  const [b, setB] = React.useState(vlist[0].version);
 
-  React.useEffect(() => { setA(m.versions[1].version); setB(m.versions[0].version); }, [sel]);
+  React.useEffect(() => {
+    const vs = (m.versions && m.versions.length) ? m.versions : [{ version: "current" }];
+    setA((vs[1] || vs[0]).version); setB(vs[0].version);
+  }, [sel]);
 
-  const vA = m.versions.find((v) => v.version === a) || m.versions[1];
-  const vB = m.versions.find((v) => v.version === b) || m.versions[0];
+  const vA = vlist.find((v) => v.version === a) || vlist[1] || vlist[0];
+  const vB = vlist.find((v) => v.version === b) || vlist[0];
 
   return (
     <>
@@ -35,7 +41,7 @@ function ModelsScreen() {
         <div style={{ width: 268, flexShrink: 0, borderRight: "1px solid var(--line)", background: "var(--bg-1)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ fontSize: 10, color: "var(--tx-3)", textTransform: "uppercase", letterSpacing: ".07em", fontWeight: 600, padding: "4px 6px" }}>Oracle models</div>
           {window.VD.models.map((mm) => {
-            const cur = mm.versions[0];
+            const cur = (mm.versions && mm.versions[0]) || { version: "current", metrics: {} };
             const active = mm.id === sel;
             return (
               <button key={mm.id} onClick={() => setSel(mm.id)} className="card" style={{ padding: 12, textAlign: "left", borderColor: active ? vhelp.modelColor(mm.id) : "var(--line)", background: active ? "var(--bg-2)" : "var(--bg-1)" }}>
@@ -124,7 +130,7 @@ function ABCompare({ model, a, b, setA, setB }) {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
         {METRIC_KEYS.map(({ k, label }) => {
-          const av = a.metrics[k], bv = b.metrics[k], d = bv - av;
+          const av = (a.metrics && a.metrics[k]) || 0, bv = (b.metrics && b.metrics[k]) || 0, d = bv - av;
           const up = d >= 0;
           return (
             <div key={k} style={{ background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 9, padding: "11px 12px" }}>
@@ -163,7 +169,7 @@ function VersionNode({ v, first, isA, isB, onA, onB }) {
           <Icon name="branch" size={13} style={{ color: "var(--tx-3)" }} />
           <button onClick={() => { setCopied(true); setTimeout(() => setCopied(false), 1000); }}
             className="mono" style={{ fontSize: 11, color: "var(--tx-2)", background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 5, padding: "3px 8px", display: "flex", alignItems: "center", gap: 6 }}>
-            {copied ? "copied" : v.weights_sha.slice(0, 24) + "…"}
+            {copied ? "copied" : (v.weights_sha || "").slice(0, 24) + "…"}
             <Icon name={copied ? "check" : "link"} size={11} style={{ color: copied ? "var(--match)" : "var(--tx-3)" }} />
           </button>
           <div style={{ flex: 1 }} />

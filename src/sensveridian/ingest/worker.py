@@ -65,11 +65,13 @@ async def job_progress_stream(job_id: str) -> AsyncIterator[dict]:
 async def enqueue_ingest(job_id: str, spec: dict) -> None:
     """Push the job onto the worker queue.
 
-    With arq configured (``VERIDIAN_USE_ARQ=1``) this enqueues ``run_ingest``;
-    otherwise (dev) it runs the synchronous pipeline in a background thread and
-    streams progress to the in-process bus so the WebSocket works without Redis.
+    Seamless Redis: when a live arq worker is detected (or arq is forced via
+    ``VERIDIAN_USE_ARQ=1``) the job is enqueued for ``run_ingest`` and progress
+    streams over Redis pub/sub; otherwise (dev / no worker) it runs the
+    synchronous pipeline in a background thread and streams progress over the
+    in-process bus, so the WebSocket works with or without Redis.
     """
-    if _arq_enabled():
+    if use_arq():
         from arq import create_pool
         from arq.connections import RedisSettings
 
@@ -82,10 +84,61 @@ async def enqueue_ingest(job_id: str, spec: dict) -> None:
     asyncio.create_task(asyncio.to_thread(run_ingest_sync, job_id, spec, emit))
 
 
-def _arq_enabled() -> bool:
-    import os
+# arq writes a health-check key while a worker is alive; its presence is our
+# "an arq worker is actually running" signal (default queue -> arq:queue).
+ARQ_HEALTH_KEY = os.getenv("VERIDIAN_ARQ_HEALTH_KEY", "arq:queue:health-check")
 
-    return os.getenv("VERIDIAN_USE_ARQ", "").lower() in ("1", "true", "yes")
+
+def _env_arq_override() -> Optional[bool]:
+    v = os.getenv("VERIDIAN_USE_ARQ")
+    if v is None or v == "":
+        return None
+    return v.strip().lower() in ("1", "true", "yes", "on")
+
+
+def redis_reachable(redis_url: Optional[str] = None) -> bool:
+    """True if Redis answers PING within a short timeout."""
+    try:
+        import redis as _redis
+
+        c = _redis.Redis.from_url(redis_url or settings.redis_url,
+                                  socket_connect_timeout=0.3, socket_timeout=0.3)
+        try:
+            return bool(c.ping())
+        finally:
+            try:
+                c.close()
+            except Exception:
+                pass
+    except Exception:
+        return False
+
+
+def arq_worker_alive(redis_url: Optional[str] = None) -> bool:
+    """True if a live arq worker is present (its health-check key exists)."""
+    try:
+        import redis as _redis
+
+        c = _redis.Redis.from_url(redis_url or settings.redis_url,
+                                  socket_connect_timeout=0.3, socket_timeout=0.3)
+        try:
+            return bool(c.exists(ARQ_HEALTH_KEY))
+        finally:
+            try:
+                c.close()
+            except Exception:
+                pass
+    except Exception:
+        return False
+
+
+def use_arq() -> bool:
+    """Decide whether to route ingest through arq. Honors the
+    ``VERIDIAN_USE_ARQ`` override; otherwise auto-detects a live arq worker."""
+    override = _env_arq_override()
+    if override is not None:
+        return override
+    return arq_worker_alive()
 
 
 # ---- the job (synchronous; runs the real Orchestrator) ---------------------
@@ -128,6 +181,7 @@ def run_ingest_sync(job_id: str, spec: dict, emit: Callable[[dict], None]) -> No
     from ..orchestrator import Orchestrator
     from ..store.faces_registry import FaceRegistry
     from ..store.pg import PgStore
+    from .label_io import detect_labels, read_image_labels
 
     source = spec.get("source", "local")
     done = 0
@@ -159,10 +213,12 @@ def run_ingest_sync(job_id: str, spec: dict, emit: Callable[[dict], None]) -> No
 
         for plan in plans:
             group, dataset_id, models = plan["group"], plan["dataset_id"], plan["models"]
-            run_id = "baseline"
+            run_id = group.get("run_id") or "baseline"
+            reingest = bool(group.get("reingest"))      # bypass Orchestrator skip-existing
+            mode = group.get("mode", "eval")
             if group.get("isNew"):
                 store.ensure_dataset(dataset_id, group.get("label") or dataset_id,
-                                     models=sorted(models), run_id=run_id)
+                                     models=sorted(models), run_id=run_id, mode=mode)
             progress(STAGES[0])  # Decoding
 
             frames_dir = Path(settings.frames_root) / job_id / dataset_id
@@ -178,7 +234,8 @@ def run_ingest_sync(job_id: str, spec: dict, emit: Callable[[dict], None]) -> No
                     )
                 progress(STAGES[1])  # Sampling frames
                 if process_paths:
-                    orch.ingest(frames_dir, run_id=run_id, selected_models=models, progress=False)
+                    orch.ingest(frames_dir, run_id=run_id, selected_models=models,
+                                skip_existing=not reingest, progress=False)
             else:
                 # Stage the capped images as symlinks into one dir so the
                 # Orchestrator runs once (and hashes the model weights once).
@@ -193,14 +250,40 @@ def run_ingest_sync(job_id: str, spec: dict, emit: Callable[[dict], None]) -> No
                     staged_to_src[link] = src
                 progress(STAGES[1])
                 if staged_to_src:
-                    orch.ingest(frames_dir, run_id=run_id, selected_models=models, progress=False)
+                    orch.ingest(frames_dir, run_id=run_id, selected_models=models,
+                                skip_existing=not reingest, progress=False)
                 process_paths = list(staged_to_src.values())  # original paths to store/serve
 
             progress(STAGES[2])  # Auto-labelling
 
+            # Ground-truth labels (both paths): parse sibling label files and
+            # store them in gt_boxes WITH image_id so fusion surfaces them.
+            label_info = detect_labels(process_paths[0]) if process_paths else None
+            gt_layer = None
+            if label_info:
+                # Seed a best-effort GT-label -> model-class alignment so eval
+                # metrics compare like with like (e.g. "Human face" -> "face").
+                # ensure_dataset keeps any existing (UI-edited) map.
+                from ..api import classmaps
+
+                class_map = classmaps.auto_class_map(label_info["class_names"], sorted(models))
+                store.ensure_dataset(dataset_id, group.get("label") or dataset_id,
+                                     models=sorted(models), run_id=run_id, mode=mode,
+                                     label_format=label_info["format"],
+                                     labels_dir=label_info["labels_dir"],
+                                     class_names=label_info["class_names"],
+                                     class_map=class_map or None)
+                gt_layer = f"gt:{dataset_id}"
+                store.upsert_layer(gt_layer, dataset_id, type="ground-truth",
+                                   source=f"labels:{label_info['format']}")
+
             for fp in process_paths:
                 image_id, w, h = hash_decoded_image(fp)
                 store.upsert_image(image_id, str(fp), w, h, dataset_id=dataset_id)
+                if gt_layer:
+                    anns = read_image_labels(fp, label_info["labels_dir"],
+                                             label_info["format"], label_info["class_names"])
+                    store.replace_image_gt(gt_layer, dataset_id, image_id, fp.name, anns)
                 if spec.get("trustThreshold") is not None:
                     _auto_accept(store, dataset_id, image_id, run_id, models,
                                  float(spec["trustThreshold"]))
@@ -208,6 +291,19 @@ def run_ingest_sync(job_id: str, spec: dict, emit: Callable[[dict], None]) -> No
                 progress(STAGES[3])  # Hash + dedup
 
             progress(STAGES[4])  # Writing to Postgres
+
+            # Path 2: with imported GT present, compute predicted-vs-GT metrics
+            # per model and persist them (eval_metrics is the source of truth;
+            # the latest also mirrors onto the current model_version for the
+            # model manager). Never fails the ingest.
+            if gt_layer and models:
+                for m in sorted(models):
+                    try:
+                        met = store.compute_eval_metrics(dataset_id, m, run_id)
+                        store.set_model_version_metrics(
+                            m, {**met, "dataset_id": dataset_id, "run_id": run_id})
+                    except Exception:
+                        pass
 
         store.refresh_summary_view()
         done = total or done

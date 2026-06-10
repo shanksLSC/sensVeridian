@@ -3,8 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import json
+import os
 import numpy as np
 import redis
+
+# Connect/socket timeout for the registry's Redis client. Bumped from 0.3s and
+# made configurable so a momentarily busy Redis does not force a file fallback.
+_REDIS_TIMEOUT = float(os.getenv("SV_REDIS_CONNECT_TIMEOUT", "0.5"))
 
 
 @dataclass
@@ -23,7 +28,8 @@ class FaceRegistry:
             fallback_file
             or "/data3/ssharma8/projects/lattice-internal/sensVeridian/cache/faces_registry.json"
         )
-        self.r = redis.Redis.from_url(redis_url, socket_connect_timeout=0.3, socket_timeout=0.3)
+        self.r = redis.Redis.from_url(redis_url, socket_connect_timeout=_REDIS_TIMEOUT,
+                                      socket_timeout=_REDIS_TIMEOUT)
         try:
             self.r.ping()
         except Exception:

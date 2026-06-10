@@ -100,8 +100,30 @@ CREATE TABLE IF NOT EXISTS datasets (
   models     TEXT[] DEFAULT '{}',
   palette    TEXT,
   run_id     TEXT,
+  mode         TEXT DEFAULT 'eval',             -- 'curate' (write labels) | 'eval' (read-only metrics)
+  label_format TEXT,                            -- 'yolo' | 'coco' | 'voc' (for curation write-back)
+  labels_dir   TEXT,                            -- on-disk labels directory for write-back
+  class_names  JSONB,                           -- {index: name} for label encode/decode
+  class_map    JSONB,                           -- {gt_label: model_class} for eval alignment
   created_at TIMESTAMPTZ DEFAULT now()
 );
+-- additive migration for pre-existing datasets tables
+ALTER TABLE datasets ADD COLUMN IF NOT EXISTS mode         TEXT DEFAULT 'eval';
+ALTER TABLE datasets ADD COLUMN IF NOT EXISTS label_format TEXT;
+ALTER TABLE datasets ADD COLUMN IF NOT EXISTS labels_dir   TEXT;
+ALTER TABLE datasets ADD COLUMN IF NOT EXISTS class_names  JSONB;
+ALTER TABLE datasets ADD COLUMN IF NOT EXISTS class_map    JSONB;
+
+-- Predicted-vs-GT evaluation metrics (Path 2), per dataset+model+run.
+CREATE TABLE IF NOT EXISTS eval_metrics (
+  dataset_id  TEXT NOT NULL,
+  model_id    TEXT NOT NULL,
+  run_id      TEXT NOT NULL,
+  metrics     JSONB,                            -- {precision,recall,f1,agreement,mAP,...}
+  computed_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (dataset_id, model_id, run_id)
+);
+CREATE INDEX IF NOT EXISTS idx_eval_metrics_dataset ON eval_metrics(dataset_id);
 
 -- version history per model (the model manager + regression review)
 CREATE TABLE IF NOT EXISTS model_versions (

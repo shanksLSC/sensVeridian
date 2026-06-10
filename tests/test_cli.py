@@ -9,7 +9,7 @@ import pytest
 from typer.testing import CliRunner
 
 import sensveridian.cli as cli_mod
-from sensveridian.store.duck import DuckStore
+from sensveridian.store.pg import PgStore
 
 
 @pytest.fixture
@@ -17,16 +17,14 @@ def cli_runner() -> CliRunner:
     return CliRunner()
 
 
-def _make_store_factory(tmp_path: Path):
-    schema = Path(__file__).resolve().parents[1] / "src" / "sensveridian" / "store" / "schema.sql"
-    db_path = tmp_path / "cli.duckdb"
-
-    def _factory() -> DuckStore:
-        s = DuckStore(db_path=db_path, schema_path=schema)
+def _pg_factory(url: str, schema: str):
+    """A cli._store replacement that builds a PgStore against the test schema."""
+    def _factory() -> PgStore:
+        s = PgStore(url, schema=schema)
         s.migrate()
         return s
 
-    return _factory, db_path
+    return _factory
 
 
 def _write_image(path: Path) -> None:
@@ -36,9 +34,8 @@ def _write_image(path: Path) -> None:
         raise RuntimeError(f"Could not write test image {path}")
 
 
-def test_cli_stats_query_export(cli_runner: CliRunner, tmp_path: Path, monkeypatch, file_registry) -> None:
-    store_factory, _db = _make_store_factory(tmp_path)
-    monkeypatch.setattr(cli_mod, "_store", store_factory)
+def test_cli_stats_query_export(cli_runner: CliRunner, tmp_path: Path, monkeypatch, file_registry, pg_store) -> None:
+    monkeypatch.setattr(cli_mod, "_store", _pg_factory(pg_store.database_url, pg_store.schema))
     monkeypatch.setattr(cli_mod, "_registry", lambda: file_registry)
 
     r_stats = cli_runner.invoke(cli_mod.app, ["stats"])
@@ -60,9 +57,8 @@ def test_cli_stats_query_export(cli_runner: CliRunner, tmp_path: Path, monkeypat
     assert out_parquet.exists()
 
 
-def test_cli_faces_seed_list_clear(cli_runner: CliRunner, tmp_path: Path, monkeypatch, file_registry) -> None:
-    store_factory, _db = _make_store_factory(tmp_path)
-    monkeypatch.setattr(cli_mod, "_store", store_factory)
+def test_cli_faces_seed_list_clear(cli_runner: CliRunner, tmp_path: Path, monkeypatch, file_registry, pg_store) -> None:
+    monkeypatch.setattr(cli_mod, "_store", _pg_factory(pg_store.database_url, pg_store.schema))
     monkeypatch.setattr(cli_mod, "_registry", lambda: file_registry)
 
     r0 = cli_runner.invoke(cli_mod.app, ["faces", "list"])
@@ -85,9 +81,8 @@ def test_cli_faces_seed_list_clear(cli_runner: CliRunner, tmp_path: Path, monkey
     assert file_registry.list_entries() == []
 
 
-def test_cli_augment_list_no_rows(cli_runner: CliRunner, tmp_path: Path, monkeypatch, file_registry) -> None:
-    store_factory, _db = _make_store_factory(tmp_path)
-    monkeypatch.setattr(cli_mod, "_store", store_factory)
+def test_cli_augment_list_no_rows(cli_runner: CliRunner, tmp_path: Path, monkeypatch, file_registry, pg_store) -> None:
+    monkeypatch.setattr(cli_mod, "_store", _pg_factory(pg_store.database_url, pg_store.schema))
     monkeypatch.setattr(cli_mod, "_registry", lambda: file_registry)
 
     r = cli_runner.invoke(cli_mod.app, ["augment", "list", "missing_parent"])
@@ -95,9 +90,8 @@ def test_cli_augment_list_no_rows(cli_runner: CliRunner, tmp_path: Path, monkeyp
     assert "No augmentations found." in r.stdout
 
 
-def test_cli_ingest_with_patched_orchestrator(cli_runner: CliRunner, tmp_path: Path, monkeypatch, file_registry) -> None:
-    store_factory, _db = _make_store_factory(tmp_path)
-    monkeypatch.setattr(cli_mod, "_store", store_factory)
+def test_cli_ingest_with_patched_orchestrator(cli_runner: CliRunner, tmp_path: Path, monkeypatch, file_registry, pg_store) -> None:
+    monkeypatch.setattr(cli_mod, "_store", _pg_factory(pg_store.database_url, pg_store.schema))
     monkeypatch.setattr(cli_mod, "_registry", lambda: file_registry)
 
     @dataclass
@@ -137,9 +131,8 @@ def test_cli_ingest_with_patched_orchestrator(cli_runner: CliRunner, tmp_path: P
     assert "writes=" in r.stdout
 
 
-def test_cli_augment_miniaturize_with_patched_worker(cli_runner: CliRunner, tmp_path: Path, monkeypatch, file_registry) -> None:
-    store_factory, _db = _make_store_factory(tmp_path)
-    monkeypatch.setattr(cli_mod, "_store", store_factory)
+def test_cli_augment_miniaturize_with_patched_worker(cli_runner: CliRunner, tmp_path: Path, monkeypatch, file_registry, pg_store) -> None:
+    monkeypatch.setattr(cli_mod, "_store", _pg_factory(pg_store.database_url, pg_store.schema))
     monkeypatch.setattr(cli_mod, "_registry", lambda: file_registry)
 
     class _FakeOrchestrator:

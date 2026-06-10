@@ -15,18 +15,24 @@ Orchestrator.ingest()
         └─ FaceRecognition (depends on FD):
             └─ Match crops against FaceRegistry (Redis/file)
     ↓
-DuckDB Store
+PostgreSQL Store
     ├─ predictions_summary (present, count, extras)
-    ├─ predictions_raw (JSON payloads)
-    └─ v_image_summary_wide (pivoted view)
+    ├─ predictions_raw (JSONB payloads)
+    └─ v_image_summary_wide (pivoted materialized view)
 ```
+
+> **Backend:** sensVeridian runs on **PostgreSQL** (DuckDB has been fully
+> removed). A synchronous `PgStore` (psycopg) drives the `Orchestrator`/worker
+> and an async `AsyncPgStore` (asyncpg) serves the API — both over the same
+> `schema_pg.sql`.
 
 ## Storage Tiers
 
 | Tier | Storage | Purpose | Query |
 |------|---------|---------|-------|
-| **Summary** | DuckDB `predictions_summary` | Fast aggregates (present, count) | `SELECT model_id, present, count FROM predictions_summary` |
-| **Raw** | DuckDB `predictions_raw` | Full detections, embeddings, decoded text | `SELECT payload FROM predictions_raw WHERE model_id='fr'` |
+| **Summary** | PostgreSQL `predictions_summary` | Fast aggregates (present, count) | `SELECT model_id, present, count FROM predictions_summary` |
+| **Raw** | PostgreSQL `predictions_raw` | Full detections, embeddings, decoded text | `SELECT payload FROM predictions_raw WHERE model_id='fr'` |
+| **Ground truth** | PostgreSQL `gt_boxes` (+ per-dataset `mode`/`class_map`) | Imported/curated labels; eval metrics in `eval_metrics` | `SELECT cls, box FROM gt_boxes WHERE dataset_id='fd_eval'` |
 | **Registry** | Redis (+ file fallback) | Face embeddings for matching | `FaceRegistry.match(embedding, threshold=0.5)` |
 
 ## Distance Augmentation Pipeline

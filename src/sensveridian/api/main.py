@@ -61,20 +61,37 @@ app.include_router(fs.router, prefix=API, tags=["fs"])
 
 @app.get(f"{API}/health")
 async def health():
-    return {"ok": True, "service": "veridian", "storage": "postgres"}
+    from ..ingest.worker import redis_reachable, use_arq
+
+    redis_ok = redis_reachable()
+    return {"ok": True, "service": "veridian", "storage": "postgres",
+            "redis": redis_ok, "arq": use_arq() if redis_ok else False}
 
 
 @app.websocket(f"{API}/ws/jobs/{{job_id}}")
 async def ws_job(ws: WebSocket, job_id: str):
-    """Stream ingest job progress to the pipeline animation in the UI."""
-    from ..ingest.worker import job_progress_stream
+    """Stream ingest job progress to the pipeline animation in the UI.
+
+    Seamless Redis: when an arq worker is driving the job, subscribe to its
+    Redis pub/sub channel; otherwise read the in-process bus (dev). Both yield
+    the same ``{jobId, stage, progress, framesDone, framesTotal, status}`` frames.
+    """
+    from ..ingest.worker import job_progress_stream, redis_progress_stream, use_arq
 
     await ws.accept()
+    stream = redis_progress_stream(job_id) if use_arq() else job_progress_stream(job_id)
     try:
-        async for frame in job_progress_stream(job_id):
-            await ws.send_json(frame)  # {jobId, stage, progress, framesDone, framesTotal, status}
+        async for frame in stream:
+            await ws.send_json(frame)
     except WebSocketDisconnect:
         return
+    finally:
+        aclose = getattr(stream, "aclose", None)
+        if aclose is not None:
+            try:
+                await aclose()
+            except Exception:
+                pass
 
 
 # Bundled no-build front-end at /studio (mounted last so it cannot shadow /api).

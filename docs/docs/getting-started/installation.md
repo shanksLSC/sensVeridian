@@ -37,8 +37,8 @@ The project requires:
 - **Python 3.10+**
 - **TensorFlow 2.12+** — Oracle model inference
 - **PyTorch 2.2+** — ZoeDepth, SAM, LaMa
-- **DuckDB** — Queryable ground-truth cache
-- **Redis** — Face registry (per-project server included)
+- **PostgreSQL** — Queryable ground-truth cache (the single storage backend)
+- **Redis** — Face registry + arq ingest queue (per-project server included)
 - **OpenCV** — Image I/O and transforms
 - **NumPy, Pandas** — Data manipulation
 

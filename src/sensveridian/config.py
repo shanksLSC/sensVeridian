@@ -18,7 +18,11 @@ class ModelPaths:
 
 @dataclass(frozen=True)
 class Settings:
-    db_path: Path = PROJECT_ROOT / "sensveridian.duckdb"
+    # PostgreSQL is the single backend. PgStore normalizes this to the sync
+    # psycopg driver; the API reads the same DATABASE_URL for asyncpg.
+    database_url: str = os.getenv(
+        "DATABASE_URL", "postgresql+asyncpg://veridian:veridian@localhost:5432/sensveridian"
+    )
     redis_url: str = os.getenv("SV_REDIS_URL", "redis://localhost:6379/0")
     cache_dir: Path = PROJECT_ROOT / "cache"
     bg_plate_dir: Path = PROJECT_ROOT / "cache" / "bg_plates"

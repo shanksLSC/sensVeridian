@@ -8,7 +8,7 @@ import numpy as np
 
 from ..config import SETTINGS
 from ..hashing import hash_decoded_image
-from ..store.duck import DuckStore
+from ..store.types import Store
 from ..orchestrator import Orchestrator
 from .depth import ZoeDepthEstimator, median_depth_in_bbox
 from .camera import CameraProfile
@@ -84,7 +84,7 @@ def _extract_detections(raw_payload: dict) -> list[tuple[list[int], int | None]]
 class FrameMiniaturizer:
     def __init__(
         self,
-        store: DuckStore,
+        store: Store,
         orchestrator: Orchestrator,
         device: str = SETTINGS.device,
         camera_profile: CameraProfile | None = None,

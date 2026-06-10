@@ -120,6 +120,11 @@ class IngestGroup(BaseModel):
     path: Optional[str] = None            # relative to settings.datasets_root
     maxImages: Optional[int] = None       # cap images processed (None -> default)
     kind: Literal["auto", "image", "video"] = "auto"
+    # operating mode: 'curate' writes verified labels back; 'eval' is read-only + metrics
+    mode: Literal["curate", "eval"] = "eval"
+    # re-ingest: bypass the Orchestrator's skip-existing so a fixed set is re-scored
+    reingest: bool = False
+    run_id: Optional[str] = None          # override the prediction run id (default 'baseline')
 
 
 class IngestJobSpec(BaseModel):

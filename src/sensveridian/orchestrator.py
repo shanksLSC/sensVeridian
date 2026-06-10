@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 
 from .config import MODELS, SETTINGS
 from .hashing import hash_decoded_image, hash_file
-from .store.duck import DuckStore
+from .store.types import Store
 from .store.faces_registry import FaceRegistry
 from .runners.base import RunnerOutput, set_conf_threshold
 from .runners.amod import AMODRunner
@@ -43,7 +43,7 @@ def _to_json_safe(value):
 
 
 class Orchestrator:
-    def __init__(self, store: DuckStore, registry: FaceRegistry, conf_threshold: Optional[float] = None):
+    def __init__(self, store: Store, registry: FaceRegistry, conf_threshold: Optional[float] = None):
         self.store = store
         self.registry = registry
         self.conf_threshold = conf_threshold

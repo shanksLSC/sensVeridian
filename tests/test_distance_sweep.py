@@ -10,7 +10,7 @@ from sensveridian.augmentation.distance_sweep import DistanceAugmentor
 from sensveridian.augmentation.camera import IMX219_PROFILE
 from sensveridian.augmentation.manual_distance import DistanceOverrides
 from sensveridian.hashing import hash_decoded_image
-from sensveridian.store.duck import SummaryRow
+from sensveridian.store.types import SummaryRow
 
 
 def _write_img(path: Path) -> None:
@@ -21,11 +21,11 @@ def _write_img(path: Path) -> None:
         raise RuntimeError(f"Failed to write {path}")
 
 
-def _seed_raw_for_image(duck_store, image_id: str, run_id: str = "r1") -> None:
-    duck_store.ensure_run(run_id)
-    duck_store.upsert_image(image_id, "/tmp/x.png", 64, 64)
-    duck_store.upsert_summary(image_id, run_id, "amod", SummaryRow(True, 1, {}))
-    duck_store.upsert_raw(
+def _seed_raw_for_image(pg_store, image_id: str, run_id: str = "r1") -> None:
+    pg_store.ensure_run(run_id)
+    pg_store.upsert_image(image_id, "/tmp/x.png", 64, 64)
+    pg_store.upsert_summary(image_id, run_id, "amod", SummaryRow(True, 1, {}))
+    pg_store.upsert_raw(
         image_id=image_id,
         run_id=run_id,
         model_id="amod",
@@ -33,15 +33,15 @@ def _seed_raw_for_image(duck_store, image_id: str, run_id: str = "r1") -> None:
     )
 
 
-def test_distance_augmentor_uses_manual_override_without_zoe(tmp_path: Path, duck_store, file_registry) -> None:
+def test_distance_augmentor_uses_manual_override_without_zoe(tmp_path: Path, pg_store, file_registry) -> None:
     img_path = tmp_path / "img.png"
     _write_img(img_path)
     image_id, _, _ = hash_decoded_image(img_path)
-    _seed_raw_for_image(duck_store, image_id)
+    _seed_raw_for_image(pg_store, image_id)
 
     fake_orch = MagicMock()
     aug = DistanceAugmentor(
-        store=duck_store,
+        store=pg_store,
         orchestrator=fake_orch,
         sam_checkpoint="/tmp/sam.pth",
         device="cpu",
@@ -65,21 +65,21 @@ def test_distance_augmentor_uses_manual_override_without_zoe(tmp_path: Path, duc
     assert steps == 2  # deltas: 1.0, 2.0
     assert aug.depth.estimate_depth_ft.call_count == 0
 
-    ds = duck_store.query_df("select source, d_initial_ft from image_depth_stats")
+    ds = pg_store.query_df("select source, d_initial_ft from image_depth_stats")
     assert len(ds) == 1
     assert ds.iloc[0]["source"] == "manual"
     assert float(ds.iloc[0]["d_initial_ft"]) == 5.0
 
 
-def test_distance_augmentor_zoe_fallback_and_auto_oracle(tmp_path: Path, duck_store, file_registry) -> None:
+def test_distance_augmentor_zoe_fallback_and_auto_oracle(tmp_path: Path, pg_store, file_registry) -> None:
     img_path = tmp_path / "img2.png"
     _write_img(img_path)
     image_id, _, _ = hash_decoded_image(img_path)
-    _seed_raw_for_image(duck_store, image_id, run_id="r2")
+    _seed_raw_for_image(pg_store, image_id, run_id="r2")
 
     fake_orch = MagicMock()
     aug = DistanceAugmentor(
-        store=duck_store,
+        store=pg_store,
         orchestrator=fake_orch,
         sam_checkpoint="/tmp/sam.pth",
         device="cpu",
@@ -103,19 +103,19 @@ def test_distance_augmentor_zoe_fallback_and_auto_oracle(tmp_path: Path, duck_st
     assert aug.depth.estimate_depth_ft.call_count == 1
     assert fake_orch.ingest.call_count == 1
 
-    ds = duck_store.query_df(f"select source from image_depth_stats where image_id='{image_id}'")
+    ds = pg_store.query_df(f"select source from image_depth_stats where image_id='{image_id}'")
     assert "zoe" in set(ds["source"].tolist())
 
 
-def test_distance_augmentor_uses_camera_calibration_without_zoe(tmp_path: Path, duck_store, file_registry) -> None:
+def test_distance_augmentor_uses_camera_calibration_without_zoe(tmp_path: Path, pg_store, file_registry) -> None:
     img_path = tmp_path / "img3.png"
     _write_img(img_path)
     image_id, _, _ = hash_decoded_image(img_path)
-    _seed_raw_for_image(duck_store, image_id, run_id="r3")
+    _seed_raw_for_image(pg_store, image_id, run_id="r3")
 
     fake_orch = MagicMock()
     aug = DistanceAugmentor(
-        store=duck_store,
+        store=pg_store,
         orchestrator=fake_orch,
         sam_checkpoint="/tmp/sam.pth",
         device="cpu",
@@ -138,5 +138,5 @@ def test_distance_augmentor_uses_camera_calibration_without_zoe(tmp_path: Path, 
     )
     assert steps > 0
 
-    ds = duck_store.query_df(f"select source from image_depth_stats where image_id='{image_id}'")
+    ds = pg_store.query_df(f"select source from image_depth_stats where image_id='{image_id}'")
     assert "calib" in set(ds["source"].tolist())

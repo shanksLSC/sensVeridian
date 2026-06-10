@@ -53,6 +53,13 @@
     face:          { label: "face",          glyph: "face",   model: "fd" },
     qr:            { label: "QR code",       glyph: "qr",     model: "qrcode" },
   };
+  // REST datasets carry classes beyond this mock set (e.g. amod "motorcycle"/
+  // "bus", or imported GT labels). Export a Proxy so an unknown class resolves
+  // to a safe default rather than crashing `CLASSES[cls].label` in the screens.
+  const _classFallback = (k) => ({ label: String(k).replace(/_/g, " "), glyph: String(k), model: "" });
+  const CLASSES_SAFE = new Proxy(CLASSES, {
+    get: (t, k) => (typeof k === "string" && k in t ? t[k] : _classFallback(k)),
+  });
 
   const PEOPLE = [
     "A. Okafor", "R. Mehta", "L. Tanaka", "S. Novak", "J. Park",
@@ -415,7 +422,7 @@
   createAudioDataset({ name: "Acoustic Events — Edge", desc: "Edge-mic captures for acoustic event + keyword detection.", n: 14 });
 
   window.VD = {
-    datasets, models, CLASSES, PEOPLE, importFormats,
+    datasets, models, CLASSES: CLASSES_SAFE, PEOPLE, importFormats,
     iou, getDataset, getImage, createDataset, createAudioDataset,
     storage: { engine: "PostgreSQL", host: "veridian-db.lattice.internal", db: "sensveridian", migratedFrom: "DuckDB" },
   };

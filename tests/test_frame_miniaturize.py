@@ -13,7 +13,7 @@ from sensveridian.augmentation.frame_miniaturize import (
 )
 from sensveridian.augmentation.manual_distance import DistanceOverrides
 from sensveridian.hashing import hash_decoded_image
-from sensveridian.store.duck import SummaryRow
+from sensveridian.store.types import SummaryRow
 
 
 def _write_img(path: Path) -> None:
@@ -24,11 +24,11 @@ def _write_img(path: Path) -> None:
         raise RuntimeError(f"Failed to write {path}")
 
 
-def _seed_raw_for_image(duck_store, image_id: str, run_id: str = "r1") -> None:
-    duck_store.ensure_run(run_id)
-    duck_store.upsert_image(image_id, "/tmp/x.png", 80, 80)
-    duck_store.upsert_summary(image_id, run_id, "amod", SummaryRow(True, 1, {}))
-    duck_store.upsert_raw(
+def _seed_raw_for_image(pg_store, image_id: str, run_id: str = "r1") -> None:
+    pg_store.ensure_run(run_id)
+    pg_store.upsert_image(image_id, "/tmp/x.png", 80, 80)
+    pg_store.upsert_summary(image_id, run_id, "amod", SummaryRow(True, 1, {}))
+    pg_store.upsert_raw(
         image_id=image_id,
         run_id=run_id,
         model_id="amod",
@@ -49,14 +49,14 @@ def test_miniaturize_frame_keeps_shape_and_shrinks() -> None:
     assert int(np.count_nonzero(out)) < int(np.count_nonzero(img))
 
 
-def test_frame_miniaturizer_manual_mode_no_zoe(tmp_path: Path, duck_store, file_registry) -> None:
+def test_frame_miniaturizer_manual_mode_no_zoe(tmp_path: Path, pg_store, file_registry) -> None:
     img_path = tmp_path / "img.png"
     _write_img(img_path)
     image_id, _, _ = hash_decoded_image(img_path)
-    _seed_raw_for_image(duck_store, image_id, run_id="r2")
+    _seed_raw_for_image(pg_store, image_id, run_id="r2")
 
     mini = FrameMiniaturizer(
-        store=duck_store,
+        store=pg_store,
         orchestrator=MagicMock(),
         device="cpu",
     )
@@ -76,6 +76,6 @@ def test_frame_miniaturizer_manual_mode_no_zoe(tmp_path: Path, duck_store, file_
     assert steps == 2
     assert mini.depth.estimate_depth_ft.call_count == 0
 
-    aug = duck_store.query_df("select method, params from augmentations order by step_index")
+    aug = pg_store.query_df("select method, params from augmentations order by step_index")
     assert len(aug) == 2
     assert set(aug["method"].tolist()) == {"frame_miniaturize"}

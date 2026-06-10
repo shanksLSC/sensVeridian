@@ -97,6 +97,7 @@ function GridScreen() {
         </div>
       ) : (
       <div className="scroll" style={{ flex: 1, padding: view === "grid" ? "18px" : "20px 22px" }}>
+        {window.EvalPanel && <window.EvalPanel dataset={d} />}
         {view === "grid" ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(232px, 1fr))", gap: 14 }}>
             {images.map((im) => <Thumb key={im.id} image={im} onClick={() => open(im)} />)}
@@ -192,10 +193,32 @@ function Heatmap({ dataset, images, onOpen }) {
 /* ---- Review queue (cross-dataset) ---------------------------------------- */
 function QueueScreen() {
   const ctx = React.useContext(VDCtx);
-  const rows = [];
-  window.VD.datasets.forEach((d) => d.images.forEach((im) => im.objects.forEach((o) => {
-    if (o.state !== "match") rows.push({ d, im, o });
-  })));
+  const isRest = (window.VERIDIAN_CONFIG || {}).backend === "rest";
+  // Local aggregation (mock / fallback): conflicts across already-loaded datasets.
+  const localRows = () => {
+    const out = [];
+    window.VD.datasets.forEach((d) => (d.images || []).forEach((im) => (im.objects || []).forEach((o) => {
+      if (o.state !== "match") out.push({ d, im, o });
+    })));
+    return out;
+  };
+  const [rows, setRows] = React.useState(localRows);
+  React.useEffect(() => {
+    let alive = true;
+    if (isRest && window.VeridianAPI && window.VeridianAPI.getQueue) {
+      window.VeridianAPI.getQueue(200)
+        .then((data) => {
+          if (!alive || !data) return;  // null -> keep local fallback (mock)
+          setRows(data.map((r) => ({
+            d: window.VD.getDataset(r.datasetId) || { id: r.datasetId, name: r.datasetName || r.datasetId },
+            im: { id: r.imageId, datasetId: r.datasetId, src: `/api/v1/datasets/${r.datasetId}/images/${r.imageId}/raw` },
+            o: { id: r.detId, cls: r.cls, state: r.state, conf: r.conf || 0, iou: r.iou || 0 },
+          })));
+        })
+        .catch((e) => console.warn("[veridian] queue load failed", e));
+    }
+    return () => { alive = false; };
+  }, [isRest]);
   rows.sort((a, b) => a.o.conf - b.o.conf);
   return (
     <>
