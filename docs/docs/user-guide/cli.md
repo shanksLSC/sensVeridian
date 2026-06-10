@@ -7,7 +7,7 @@ Entrypoint: `sv` (installed via `pyproject.toml`) or `python -m sensveridian.cli
 | Command | What it does |
 |---------|-------------|
 | `sv ingest` | Run oracles on images and write to cache |
-| `sv query` | Execute arbitrary SQL against DuckDB |
+| `sv query` | Execute arbitrary SQL against PostgreSQL |
 | `sv export` | Export a SQL result to parquet |
 | `sv stats` | Show row counts for all tables |
 | `sv refresh-metadata` | Recompute the `images.metadata` JSON column for one or many images |
@@ -56,7 +56,7 @@ sv ingest /data3/ssharma8/datasets/mod2_class/images/test \
 
 ## query
 
-Run any SQL against the live DuckDB file.
+Run any SQL against the live PostgreSQL database.
 
 ```
 sv query "<SQL>"

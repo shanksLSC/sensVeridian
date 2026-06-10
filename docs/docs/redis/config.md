@@ -29,7 +29,7 @@ Global configuration dataclass.
 
 | Field | Type | Default | Purpose |
 |-------|------|---------|---------|
-| `db_path` | str | `./sensveridian.duckdb` | DuckDB file path |
+| `database_url` | str | `postgresql+asyncpg://veridian:veridian@localhost:5432/sensveridian` | PostgreSQL connection URL |
 | `redis_url` | str | `redis://localhost:6379/0` | Redis connection string |
 | `cache_dir` | str | `./cache` | Cache directory (augmentations, depth maps, etc.) |
 | `face_registry_fallback` | str | `./cache/faces_registry.json` | File fallback if Redis down |
@@ -39,16 +39,16 @@ Global configuration dataclass.
 **Override via environment**:
 
 ```bash
-export SV_DB_PATH=/mnt/data/sensveridian.duckdb
+export DATABASE_URL=postgresql+asyncpg://veridian:veridian@localhost:5432/sensveridian
 export SV_REDIS_URL=redis://localhost:6380/0
-sv stats  # Uses new paths
+sv stats  # Uses new settings
 ```
 
 **Or in Python**:
 
 ```python
 from sensveridian.config import SETTINGS
-SETTINGS.db_path = "/custom/db.duckdb"
+SETTINGS.database_url = "postgresql+asyncpg://veridian:veridian@remote:5432/sensveridian"
 SETTINGS.redis_url = "redis://remote:6379/0"
 ```
 
@@ -154,9 +154,13 @@ sv ingest /path --run-id test
 For running `pytest`:
 
 ```bash
-# Use in-memory DuckDB + file fallback for faces
-export SV_DB_PATH=:memory:
-export SV_REDIS_URL=redis://localhost:9999/0  # Non-existent; triggers file fallback
+# Tests run inside a dedicated PostgreSQL schema (default sv_test) of the same
+# DATABASE_URL, so they never touch the live `public` data; the schema is
+# migrated once per session and truncated between tests (see tests/conftest.py).
+export DATABASE_URL=postgresql+asyncpg://veridian:veridian@localhost:5432/sensveridian
+export SENSVERIDIAN_TEST_SCHEMA=sv_test      # optional; this is the default
+# A non-existent Redis URL triggers the FaceRegistry file fallback:
+export SV_REDIS_URL=redis://localhost:9999/0
 
 pytest tests/ -v
 ```

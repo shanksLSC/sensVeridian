@@ -1,6 +1,6 @@
 # Sample Queries
 
-All queries run against DuckDB via `sv query "<SQL>"` or programmatically.
+All queries run against PostgreSQL via `sv query "<SQL>"` or programmatically.
 
 ## Basic Statistics
 

@@ -144,17 +144,21 @@ huggingface-cli login
 
 ## Database Issues
 
-### "sensveridian.duckdb" corrupted or locked
+### Cannot connect to PostgreSQL
 
-Database file corrupted or in use.
+`DATABASE_URL` points at an unreachable server, or the schema is missing.
 
 **Fix**:
 ```bash
-# Backup and reset
-cp sensveridian.duckdb sensveridian.duckdb.bak
-rm sensveridian.duckdb  # Will recreate on next ingest
-sv query "SELECT COUNT(*) FROM images"  # Recreates schema
+# Confirm the server is reachable and the schema is applied
+psql "$DATABASE_URL_SYNC" -c "SELECT COUNT(*) FROM images"
+# (Re)apply the schema (idempotent; CREATE ... IF NOT EXISTS)
+psql "$DATABASE_URL_SYNC" -f src/sensveridian/store/schema_pg.sql
+# Back up / restore a database with pg_dump / pg_restore
+pg_dump "$DATABASE_URL_SYNC" -Fc -f sensveridian.dump
 ```
+`$DATABASE_URL_SYNC` is the `postgresql://...` form of `DATABASE_URL` (drop the
+`+asyncpg`/`+psycopg` driver suffix for `psql`).
 
 ### Query runs very slow
 
@@ -165,9 +169,9 @@ Large dataset with expensive grouping/joins.
 2. Export to Parquet and use pandas for analytics
 3. Filter by run_id or model_id to reduce rows
 
-### "DuckDB memory error" on export
+### Out-of-memory on export
 
-Full dataset too large for in-memory parquet.
+Full dataset too large to materialize for parquet (export goes through pandas).
 
 **Fix**: Export in chunks with filtered SQL:
 ```bash

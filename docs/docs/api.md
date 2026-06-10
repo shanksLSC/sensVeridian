@@ -14,7 +14,7 @@ python3 -c "from sensveridian.orchestrator import Orchestrator; help(Orchestrato
 | Module | Purpose |
 |--------|---------|
 | `sensveridian.orchestrator` | High-level ingest orchestration |
-| `sensveridian.store.duck` | DuckDB interface |
+| `sensveridian.store.pg` / `sensveridian.store.pg_async` | PostgreSQL interface (sync / async) |
 | `sensveridian.store.faces_registry` | Face registry (Redis/file) |
 | `sensveridian.runners.*` | Oracle model runners (AMOD, QRCode, FD, FR) |
 | `sensveridian.augmentation.distance_sweep` | Distance-sweep main pipeline |
@@ -41,14 +41,15 @@ orch.ingest(
 )
 ```
 
-### DuckStore
+### PgStore
 
 ```python
-from sensveridian.store.duck import DuckStore
+from sensveridian.store.pg import PgStore
+from sensveridian.config import SETTINGS
 
-store = DuckStore(db_path="./sensveridian.duckdb")
+store = PgStore(SETTINGS.database_url)   # postgresql+psycopg://veridian:veridian@localhost:5432/sensveridian
 store.query_df(sql: str) -> pd.DataFrame
-store.export_parquet(path: str, sql: str = None)
+store.export_parquet(sql: str, out_path)
 ```
 
 ### FaceRegistry

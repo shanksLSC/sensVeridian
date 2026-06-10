@@ -161,7 +161,7 @@ sv augment distance /path/to/images \
 ├── ...
 ```
 
-Metadata is stored in DuckDB tables (`augmentations`, `image_depth_stats`, `image_bg_plates`).
+Metadata is stored in PostgreSQL tables (`augmentations`, `image_depth_stats`, `image_bg_plates`).
 
 ## Performance
 

@@ -57,12 +57,12 @@ export SV_REDIS_PORT=6380
 
 | Var | Default | Purpose |
 |-----|---------|---------|
-| `SV_DB_PATH` | `./sensveridian.duckdb` | DuckDB file path |
+| `DATABASE_URL` | `postgresql+asyncpg://veridian:veridian@localhost:5432/sensveridian` | PostgreSQL connection URL (the sync store rewrites `+asyncpg` → `+psycopg`) |
 
-**Example** (remote or different location):
+**Example** (remote or different database):
 
 ```bash
-export SV_DB_PATH=/mnt/data/sensveridian_prod.duckdb
+export DATABASE_URL=postgresql+asyncpg://veridian:veridian@db.internal:5432/sensveridian_prod
 ```
 
 ## Logging
@@ -85,7 +85,7 @@ export XDG_CACHE_HOME=/data3/ssharma8/xdg-cache
 export CUDA_VISIBLE_DEVICES=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export SV_REDIS_URL=redis://localhost:6379/0
-export SV_DB_PATH=./sensveridian.duckdb
+export DATABASE_URL=postgresql+asyncpg://veridian:veridian@localhost:5432/sensveridian
 
 # Now run commands
 cd /data3/ssharma8/projects/lattice-internal/sensVeridian
