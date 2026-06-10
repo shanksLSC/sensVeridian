@@ -1439,9 +1439,9 @@
 <ol>
 <li><strong>Image Ingestion</strong>: Recursive folder scan with format detection (.jpg, .png, .bmp, .webp)</li>
 <li><strong>Oracle Models</strong>: Run selected subset of 4 configurable models</li>
-<li><strong>Result Storage</strong>: Summary + raw JSON tiers in DuckDB</li>
+<li><strong>Result Storage</strong>: Summary + raw JSONB tiers in PostgreSQL</li>
 <li><strong>Face Matching</strong>: Redis-backed or file-fallback registry with cosine similarity</li>
-<li><strong>Query API</strong>: SQL against DuckDB; export to Parquet for analytics</li>
+<li><strong>Query API</strong>: SQL against PostgreSQL; export to Parquet for analytics</li>
 </ol>
 <h2 id="oracle-models-in-scope">Oracle Models (in scope)</h2>
 <table>
@@ -1487,7 +1487,7 @@
 </table>
 <h2 id="storage">Storage</h2>
 <ul>
-<li><strong>DuckDB</strong> — Queryable ground-truth cache (single-file, embedded, no server)</li>
+<li><strong>PostgreSQL</strong> — Queryable ground-truth cache (sync <code>PgStore</code> + async <code>AsyncPgStore</code>)</li>
 <li><strong>Redis</strong> — Registered-faces lookup (with file-backed fallback if unavailable)</li>
 <li><strong>Filesystem</strong> — Augmented images, inpainted backgrounds, depth maps</li>
 </ul>

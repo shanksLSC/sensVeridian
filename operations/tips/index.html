@@ -1798,7 +1798,7 @@
 <li class="task-list-item"><input type="checkbox" disabled/> Face registry seeded: <code>sv faces list</code> shows ≥1 entry</li>
 <li class="task-list-item"><input type="checkbox" disabled/> Models accessible: <code>ls /data3/ssharma8/all-models/*/..h5</code></li>
 <li class="task-list-item"><input type="checkbox" disabled/> SAM checkpoint available: <code>ls /data3/ssharma8/model-cache/sam/sam_vit_b_01ec64.pth</code></li>
-<li class="task-list-item"><input type="checkbox" disabled/> Disk space: <code>df -h</code> (DuckDB, augmentations, depth maps need 10–100 GB depending on image count)</li>
+<li class="task-list-item"><input type="checkbox" disabled/> Disk space: <code>df -h</code> (PostgreSQL data, augmentations, depth maps need 10–100 GB depending on image count)</li>
 </ul>
 <h2 id="ingest-optimization">Ingest Optimization</h2>
 <h3 id="fast-path-summary-only-no-augmentation">Fast path (summary only, no augmentation)</h3>
@@ -1857,11 +1857,11 @@ sv<span class="w"> </span>augment<span class="w"> </span>distance<span class="w"
 </code></pre></div>
 <h2 id="database-maintenance">Database Maintenance</h2>
 <h3 id="regular-backups">Regular backups</h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Backup before large operations</span>
-cp<span class="w"> </span>sensveridian.duckdb<span class="w"> </span>sensveridian.duckdb.backup.<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Backup before large operations (pg_dump custom format)</span>
+pg_dump<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DATABASE_URL_SYNC</span><span class="s2">&quot;</span><span class="w"> </span>-Fc<span class="w"> </span>-f<span class="w"> </span>sensveridian.backup.<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span>.dump
 
 <span class="c1"># Keep last 3 backups</span>
-ls<span class="w"> </span>-1t<span class="w"> </span>sensveridian.duckdb.backup.*<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-n<span class="w"> </span>+4<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>rm
+ls<span class="w"> </span>-1t<span class="w"> </span>sensveridian.backup.*.dump<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-n<span class="w"> </span>+4<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>rm
 </code></pre></div>
 <h3 id="cleanup-old-runs">Cleanup old runs</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Remove old runs to free space</span>
@@ -1941,7 +1941,7 @@ import<span class="w"> </span>pandas<span class="w"> </span>as<span class="w"> <
 ./scripts/redis_stop.sh
 
 <span class="c1"># Backup database</span>
-cp<span class="w"> </span>sensveridian.duckdb<span class="w"> </span>sensveridian.duckdb.final.<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span>
+pg_dump<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DATABASE_URL_SYNC</span><span class="s2">&quot;</span><span class="w"> </span>-Fc<span class="w"> </span>-f<span class="w"> </span>sensveridian.final.<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span>.dump
 
 <span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;sensVeridian stopped cleanly&quot;</span>
 </code></pre></div>

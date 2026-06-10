@@ -1412,11 +1412,12 @@
 
 <h1 id="sensveridian">sensVeridian</h1>
 <p><strong>Ground-truth cache and distance-aware augmentation pipeline for vision ML model evaluation.</strong></p>
-<p>sensVeridian ingests images, runs a configurable pipeline of ML oracle models on each, stores results in a queryable DuckDB cache, and can synthesize photorealistic distance-swept augmentations for robustness testing.</p>
+<p>sensVeridian ingests images, runs a configurable pipeline of ML oracle models on each, stores results in a queryable PostgreSQL cache, and can synthesize photorealistic distance-swept augmentations for robustness testing.</p>
 <h2 id="features">Features</h2>
 <ul>
 <li><strong>Oracle Models</strong>: Run AMOD, QRCode Detection, Face Detection, Face Recognition on images</li>
-<li><strong>Queryable Cache</strong>: DuckDB-backed storage with SQL queries and Parquet export</li>
+<li><strong>Queryable Cache</strong>: PostgreSQL-backed storage with SQL queries and Parquet export</li>
+<li><strong>Veridian Studio</strong>: FastAPI + browser UI with two paths — curate (verify → write labels back) and evaluate (Predicted-vs-GT metrics)</li>
 <li><strong>Face Registry</strong>: Redis-backed registered-faces lookup for FR matching</li>
 <li><strong>Distance Augmentation</strong>: Photorealistic distance-swept augmentations using ZoeDepth + SAM + LaMa</li>
 <li><strong>Manual Overrides</strong>: Specify known distances per-image or per-detection, ZoeDepth as fallback</li>

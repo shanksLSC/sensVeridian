@@ -825,6 +825,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#ingest-queue-arq-auto-detected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ingest Queue (arq) — Auto-detected
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1492,6 +1503,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#ingest-queue-arq-auto-detected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ingest Queue (arq) — Auto-detected
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1585,7 +1607,21 @@
 </tbody>
 </table>
 <h2 id="file-fallback-still-supported">File Fallback (Still Supported)</h2>
-<p>If Redis is unreachable at <code>SV_REDIS_URL</code>, <code>FaceRegistry</code> transparently falls back to <code>cache/faces_registry.json</code> so local development still works. Once Redis is up, run the migration script above to promote those entries and archive the JSON.</p>
+<p>If Redis is unreachable at <code>SV_REDIS_URL</code>, <code>FaceRegistry</code> transparently falls back to <code>cache/faces_registry.json</code> so local development still works. Once Redis is up, run the migration script above to promote those entries and archive the JSON. The connect timeout is configurable via <code>SV_REDIS_CONNECT_TIMEOUT</code> (seconds, default <code>0.5</code>).</p>
+<h2 id="ingest-queue-arq-auto-detected">Ingest Queue (arq) — Auto-detected</h2>
+<p>The same Redis also backs the <strong>arq ingest queue</strong>. Veridian Studio detects this automatically — no flag required:</p>
+<ul>
+<li>The Studio API calls <code>sensveridian.ingest.worker.use_arq()</code>, which returns <code>true</code> only when a <strong>live arq worker</strong> is present (its Redis health-check key <code>arq:queue:health-check</code> exists). Otherwise ingest runs <strong>in-process</strong> in a worker thread, so a dev server works with or without Redis.</li>
+<li>When arq drives a job, <code>run_ingest</code> publishes progress frames to Redis pub/sub on channel <code>job:&lt;job_id&gt;</code>, and the WebSocket <code>/ws/jobs/{job_id}</code> subscribes to them. Without a worker, the WebSocket reads the in-process bus. Both emit identical frames.</li>
+<li><code>GET /api/v1/health</code> reports live <code>redis</code> and <code>arq</code> status.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># Start the queue worker (uses SV_REDIS_URL). Leave it running alongside uvicorn.</span>
+arq<span class="w"> </span>sensveridian.ingest.worker.WorkerSettings
+
+<span class="c1"># Force the decision either way (overrides auto-detection):</span>
+<span class="nv">VERIDIAN_USE_ARQ</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>uvicorn<span class="w"> </span>sensveridian.api.main:app<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span><span class="w">   </span><span class="c1"># always arq</span>
+<span class="nv">VERIDIAN_USE_ARQ</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>uvicorn<span class="w"> </span>sensveridian.api.main:app<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span><span class="w">   </span><span class="c1"># always in-process</span>
+</code></pre></div>
 
 
 

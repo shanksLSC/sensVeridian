@@ -1473,8 +1473,8 @@ wget<span class="w"> </span>-O<span class="w"> </span>/data3/ssharma8/model-cach
 <li><strong>Python 3.10+</strong></li>
 <li><strong>TensorFlow 2.12+</strong> — Oracle model inference</li>
 <li><strong>PyTorch 2.2+</strong> — ZoeDepth, SAM, LaMa</li>
-<li><strong>DuckDB</strong> — Queryable ground-truth cache</li>
-<li><strong>Redis</strong> — Face registry (per-project server included)</li>
+<li><strong>PostgreSQL</strong> — Queryable ground-truth cache (the single storage backend)</li>
+<li><strong>Redis</strong> — Face registry + arq ingest queue (per-project server included)</li>
 <li><strong>OpenCV</strong> — Image I/O and transforms</li>
 <li><strong>NumPy, Pandas</strong> — Data manipulation</li>
 </ul>

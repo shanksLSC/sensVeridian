@@ -1180,6 +1180,34 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#two-operating-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two operating paths
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Two operating paths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-alignment-per-dataset-class-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Class alignment (per-dataset class-map)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1259,6 +1287,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Running">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#seamless-redis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seamless Redis
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1421,6 +1466,34 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#two-operating-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two operating paths
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Two operating paths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-alignment-per-dataset-class-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Class alignment (per-dataset class-map)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1501,6 +1574,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Running">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#seamless-redis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seamless Redis
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1561,7 +1651,62 @@
 sensVeridian pipeline. The studio front-end is <strong>served by the backend</strong> at
 <code>/studio</code> and talks to it over REST + WebSocket. You pick a folder of images (or
 videos) on disk, run the oracle models, watch progress, and review the
-predictions on the real images — all backed by PostgreSQL.</p>
+predictions on the real images — all backed by <strong>PostgreSQL</strong> (DuckDB has been
+fully removed; PostgreSQL is the single backend).</p>
+<h2 id="two-operating-paths">Two operating paths</h2>
+<p>Every dataset carries a <code>mode</code> that selects one of two workflows:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Path 1 — Curate</strong> (<code>mode='curate'</code>)</th>
+<th><strong>Path 2 — Evaluate</strong> (<code>mode='eval'</code>, default)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Inputs</td>
+<td>Images (+ optional label files)</td>
+<td>Images <strong>+</strong> existing ground-truth labels</td>
+</tr>
+<tr>
+<td>Models</td>
+<td>Run for <strong>candidate</strong> boxes</td>
+<td>Run for <strong>predictions</strong> scored vs GT</td>
+</tr>
+<tr>
+<td>Human action</td>
+<td>Verify / edit / reject predicted boxes</td>
+<td>Inspect; adjust the class-map</td>
+</tr>
+<tr>
+<td>Output</td>
+<td><strong>Overwrites the label files</strong> of verified images in place (one-time <code>.bak</code>) + updates <code>gt_boxes</code></td>
+<td><strong>Computes Predicted-vs-GT metrics</strong>, populates <code>eval_metrics</code>; <strong>never writes a label file</strong></td>
+</tr>
+<tr>
+<td>Endpoint</td>
+<td><code>POST /datasets/{id}/images/{imageId}/commit-labels</code> (curate only)</td>
+<td><code>POST /datasets/{id}/metrics:compute</code>, <code>GET /datasets/{id}/metrics</code></td>
+</tr>
+</tbody>
+</table>
+<p>Both paths share one foundation — <strong>label files are parsed into <code>gt_boxes</code> and
+matched to frames by filename → sha</strong> at ingest — so imported ground truth lights
+up in the canvas and feeds fusion regardless of mode.</p>
+<h3 id="class-alignment-per-dataset-class-map">Class alignment (per-dataset class-map)</h3>
+<p>A dataset's GT label vocabulary rarely equals the model's class names
+(e.g. the FaceDetection eval set labels faces as <code>"Human face"</code> while the <code>fd</code>
+model emits <code>"face"</code>). Each dataset stores a <code>class_map</code> (<code>{gt_label →
+model_class}</code>):</p>
+<ul>
+<li>ingest seeds a best-effort map (case-insensitive substring) via
+  <code>api.classmaps.auto_class_map</code>;</li>
+<li>the UI edits it (<code>PUT /datasets/{id}/class-map</code>); existing edits always win
+  over re-seeding;</li>
+<li>fusion drops GT whose label is unmapped and relabels the rest to the model
+  class, so match / miss / fp / metrics compare like with like.</li>
+</ul>
 <h2 id="architecture">Architecture</h2>
 <div class="highlight"><pre><span></span><code> Veridian Studio (browser, served at /studio)        FastAPI app (sensveridian.api)
    window.VeridianAPI (REST)  ──HTTP──▶  routers ──▶ AsyncPgStore (asyncpg)  ─┐
@@ -1622,16 +1767,26 @@ and <code>GET /datasets/{id}/images/{imageId}/raw</code> serves the bytes from i
 </code></pre></div>
 <h2 id="local-folder-ingest-images-videos">Local-folder ingest (images + videos)</h2>
 <p><code>POST /ingest/jobs</code> with <code>source:"local"</code> and groups carrying a <code>path</code> (relative
-to the datasets root), <code>models</code>, <code>maxImages</code>, and <code>kind</code>:</p>
+to the datasets root), <code>models</code>, <code>maxImages</code>, <code>kind</code>, plus <code>mode</code>
+(<code>curate</code>/<code>eval</code>), <code>reingest</code>, and an optional <code>run_id</code>:</p>
 <ul>
 <li><strong>Images</strong> — the first <code>maxImages</code> files are symlink-staged into a per-run dir
   (so the model weights hash once) and <code>Orchestrator.ingest</code> runs over them.</li>
 <li><strong>Videos</strong> — sampled to frames with the OpenCV target-fps stride sampler, then
   <code>Orchestrator.ingest</code> runs over the frames.</li>
+<li><strong>Ground-truth labels</strong> — a sibling <code>labels/</code> (+ <code>dataset.yaml</code>) is detected,
+  parsed (<code>ingest/label_io.py</code>), and stored in <code>gt_boxes</code> with <code>image_id</code> set
+  (filename → sha), so imported GT lights up in the canvas.</li>
+<li><strong>Re-ingest</strong> — <code>reingest:true</code> sets <code>skip_existing=false</code> so a fixed set is
+  reprocessed (and predictions overwritten); pair with a <code>run_id</code> for A/B runs
+  that feed the regression screen.</li>
+<li><strong>Eval metrics</strong> — at the end of an ingest with imported GT, per-model
+  Predicted-vs-GT metrics are computed and written to <code>eval_metrics</code> (and the
+  latest is mirrored onto the current <code>model_version</code>).</li>
 <li>Each frame is dataset-tagged; with a <code>trustThreshold</code>, confident detections
-  are auto-accepted into the ground-truth layer; the summary matview is
-  refreshed. Progress streams over <code>WS /ws/jobs/{jobId}</code> (in-process in dev;
-  Redis pub/sub under arq in prod).</li>
+  are auto-accepted; the summary matview is refreshed. Progress streams over
+  <code>WS /ws/jobs/{jobId}</code> (in-process bus in dev; Redis pub/sub when an arq worker
+  is live).</li>
 </ul>
 <h2 id="model-catalogue">Model catalogue</h2>
 <p>A FastAPI lifespan hook seeds the <code>models</code> + <code>model_versions</code> tables from the
@@ -1645,8 +1800,21 @@ uvicorn<span class="w"> </span>sensveridian.api.main:app<span class="w"> </span>
 <span class="c1"># open the UI:</span>
 xdg-open<span class="w"> </span>http://localhost:8000/studio
 <span class="c1"># ingest worker (prod, Redis-backed). Dev runs in-process — no worker needed.</span>
-<span class="nv">VERIDIAN_USE_ARQ</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>arq<span class="w"> </span>sensveridian.ingest.worker.WorkerSettings
+arq<span class="w"> </span>sensveridian.ingest.worker.WorkerSettings
 </code></pre></div>
+<h3 id="seamless-redis">Seamless Redis</h3>
+<p>Redis backs both the face registry and the arq ingest queue, and the integration
+is <strong>auto-detecting</strong> — no flag required:</p>
+<ul>
+<li><code>worker.use_arq()</code> returns true when a <strong>live arq worker</strong> is present (its
+  Redis health-check key exists); otherwise ingest runs in-process in a thread.</li>
+<li>When arq drives the job, <code>run_ingest</code> publishes progress frames to Redis
+  pub/sub and <code>WS /ws/jobs/{id}</code> subscribes to them; otherwise the WS reads the
+  in-process bus. Both yield identical frames.</li>
+<li><code>VERIDIAN_USE_ARQ=1|0</code> forces the decision either way; <code>/health</code> reports live
+  <code>redis</code> + <code>arq</code> status. <code>FaceRegistry</code> falls back to a JSON file when Redis is
+  unreachable (timeout via <code>SV_REDIS_CONNECT_TIMEOUT</code>).</li>
+</ul>
 <h2 id="endpoints">Endpoints</h2>
 <table>
 <thead>
@@ -1699,6 +1867,26 @@ xdg-open<span class="w"> </span>http://localhost:8000/studio
 </tr>
 <tr>
 <td>GET</td>
+<td><code>/datasets/{id}/metrics</code> · POST <code>:compute</code></td>
+<td>Path 2 metrics (P/R/F1/agreement + COCO mAP)</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/datasets/{id}/class-map</code></td>
+<td>edit GT-label → model-class alignment</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/datasets/{id}/images/{imageId}/commit-labels</code></td>
+<td><strong>Path 1</strong> write-back (curate only; eval → 409)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/queue</code></td>
+<td>cross-dataset review queue (conflicts, lowest conf first)</td>
+</tr>
+<tr>
+<td>GET</td>
 <td><code>/models</code> · <code>/models/{id}/regressions</code> · POST <code>:promote</code></td>
 <td>model catalogue</td>
 </tr>
@@ -1711,6 +1899,11 @@ xdg-open<span class="w"> </span>http://localhost:8000/studio
 <td>GET</td>
 <td><code>/lineage</code> · POST <code>/connections</code></td>
 <td>provenance DAG · watched local folder</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/health</code></td>
+<td><code>{storage, redis, arq}</code> status</td>
 </tr>
 </tbody>
 </table>
@@ -1761,8 +1954,6 @@ in <code>postprocessors/constants.py</code>; confirm them against the MLHILS hea
 available.</p>
 <h2 id="remaining-seams-require-live-infrastructure">Remaining seams (require live infrastructure)</h2>
 <ul>
-<li><strong>arq/Redis progress in production</strong> — dev streams over an in-process bus; the
-  arq worker publishes to Redis pub/sub (<code>worker.redis_progress_stream</code>).</li>
 <li><strong>Connection watchers</strong> — <code>POST /connections</code> records a watched local folder;
   a cron/inotify watcher that auto-creates ingest jobs is a seam.</li>
 <li><strong>AED model weights</strong> — <code>runners/aed.py</code> uses an energy-based placeholder;

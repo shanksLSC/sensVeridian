@@ -1330,10 +1330,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#sensveridianduckdb-corrupted-or-locked" class="md-nav__link">
+  <a href="#cannot-connect-to-postgresql" class="md-nav__link">
     <span class="md-ellipsis">
       
-        "sensveridian.duckdb" corrupted or locked
+        Cannot connect to PostgreSQL
       
     </span>
   </a>
@@ -1352,10 +1352,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#duckdb-memory-error-on-export" class="md-nav__link">
+  <a href="#out-of-memory-on-export" class="md-nav__link">
     <span class="md-ellipsis">
       
-        "DuckDB memory error" on export
+        Out-of-memory on export
       
     </span>
   </a>
@@ -1872,10 +1872,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#sensveridianduckdb-corrupted-or-locked" class="md-nav__link">
+  <a href="#cannot-connect-to-postgresql" class="md-nav__link">
     <span class="md-ellipsis">
       
-        "sensveridian.duckdb" corrupted or locked
+        Cannot connect to PostgreSQL
       
     </span>
   </a>
@@ -1894,10 +1894,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#duckdb-memory-error-on-export" class="md-nav__link">
+  <a href="#out-of-memory-on-export" class="md-nav__link">
     <span class="md-ellipsis">
       
-        "DuckDB memory error" on export
+        Out-of-memory on export
       
     </span>
   </a>
@@ -2078,22 +2078,26 @@ wget<span class="w"> </span>-O<span class="w"> </span>/data3/ssharma8/model-cach
 <span class="c1"># or set HF_TOKEN environment variable</span>
 </code></pre></div></p>
 <h2 id="database-issues">Database Issues</h2>
-<h3 id="sensveridianduckdb-corrupted-or-locked">"sensveridian.duckdb" corrupted or locked</h3>
-<p>Database file corrupted or in use.</p>
+<h3 id="cannot-connect-to-postgresql">Cannot connect to PostgreSQL</h3>
+<p><code>DATABASE_URL</code> points at an unreachable server, or the schema is missing.</p>
 <p><strong>Fix</strong>:
-<div class="highlight"><pre><span></span><code><span class="c1"># Backup and reset</span>
-cp<span class="w"> </span>sensveridian.duckdb<span class="w"> </span>sensveridian.duckdb.bak
-rm<span class="w"> </span>sensveridian.duckdb<span class="w">  </span><span class="c1"># Will recreate on next ingest</span>
-sv<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM images&quot;</span><span class="w">  </span><span class="c1"># Recreates schema</span>
-</code></pre></div></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Confirm the server is reachable and the schema is applied</span>
+psql<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DATABASE_URL_SYNC</span><span class="s2">&quot;</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM images&quot;</span>
+<span class="c1"># (Re)apply the schema (idempotent; CREATE ... IF NOT EXISTS)</span>
+psql<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DATABASE_URL_SYNC</span><span class="s2">&quot;</span><span class="w"> </span>-f<span class="w"> </span>src/sensveridian/store/schema_pg.sql
+<span class="c1"># Back up / restore a database with pg_dump / pg_restore</span>
+pg_dump<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DATABASE_URL_SYNC</span><span class="s2">&quot;</span><span class="w"> </span>-Fc<span class="w"> </span>-f<span class="w"> </span>sensveridian.dump
+</code></pre></div>
+<code>$DATABASE_URL_SYNC</code> is the <code>postgresql://...</code> form of <code>DATABASE_URL</code> (drop the
+<code>+asyncpg</code>/<code>+psycopg</code> driver suffix for <code>psql</code>).</p>
 <h3 id="query-runs-very-slow">Query runs very slow</h3>
 <p>Large dataset with expensive grouping/joins.</p>
 <p><strong>Fix</strong>:
 1. Add indexes: <code>CREATE INDEX idx_model_id ON predictions_summary(model_id)</code>
 2. Export to Parquet and use pandas for analytics
 3. Filter by run_id or model_id to reduce rows</p>
-<h3 id="duckdb-memory-error-on-export">"DuckDB memory error" on export</h3>
-<p>Full dataset too large for in-memory parquet.</p>
+<h3 id="out-of-memory-on-export">Out-of-memory on export</h3>
+<p>Full dataset too large to materialize for parquet (export goes through pandas).</p>
 <p><strong>Fix</strong>: Export in chunks with filtered SQL:
 <div class="highlight"><pre><span></span><code>sv<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--to<span class="w"> </span>/tmp/part1.parquet<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sql<span class="w"> </span><span class="s2">&quot;SELECT * FROM predictions_summary WHERE run_id=&#39;baseline&#39;&quot;</span>

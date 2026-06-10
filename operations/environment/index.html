@@ -1564,14 +1564,14 @@ sv<span class="w"> </span>augment<span class="w"> </span>distance<span class="w"
 </thead>
 <tbody>
 <tr>
-<td><code>SV_DB_PATH</code></td>
-<td><code>./sensveridian.duckdb</code></td>
-<td>DuckDB file path</td>
+<td><code>DATABASE_URL</code></td>
+<td><code>postgresql+asyncpg://veridian:veridian@localhost:5432/sensveridian</code></td>
+<td>PostgreSQL connection URL (the sync store rewrites <code>+asyncpg</code> → <code>+psycopg</code>)</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Example</strong> (remote or different location):</p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">SV_DB_PATH</span><span class="o">=</span>/mnt/data/sensveridian_prod.duckdb
+<p><strong>Example</strong> (remote or different database):</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DATABASE_URL</span><span class="o">=</span>postgresql+asyncpg://veridian:veridian@db.internal:5432/sensveridian_prod
 </code></pre></div>
 <h2 id="logging">Logging</h2>
 <p>sensVeridian uses Python's standard logging; configure with <code>LOGLEVEL</code>:</p>
@@ -1586,7 +1586,7 @@ sv<span class="w"> </span>ingest<span class="w"> </span>/path<span class="w"> </
 <span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="m">1</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">PYTORCH_CUDA_ALLOC_CONF</span><span class="o">=</span>expandable_segments:True
 <span class="nb">export</span><span class="w"> </span><span class="nv">SV_REDIS_URL</span><span class="o">=</span>redis://localhost:6379/0
-<span class="nb">export</span><span class="w"> </span><span class="nv">SV_DB_PATH</span><span class="o">=</span>./sensveridian.duckdb
+<span class="nb">export</span><span class="w"> </span><span class="nv">DATABASE_URL</span><span class="o">=</span>postgresql+asyncpg://veridian:veridian@localhost:5432/sensveridian
 
 <span class="c1"># Now run commands</span>
 <span class="nb">cd</span><span class="w"> </span>/data3/ssharma8/projects/lattice-internal/sensVeridian

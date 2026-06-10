@@ -1448,11 +1448,17 @@ Orchestrator.ingest()
         └─ FaceRecognition (depends on FD):
             └─ Match crops against FaceRegistry (Redis/file)
     ↓
-DuckDB Store
+PostgreSQL Store
     ├─ predictions_summary (present, count, extras)
-    ├─ predictions_raw (JSON payloads)
-    └─ v_image_summary_wide (pivoted view)
+    ├─ predictions_raw (JSONB payloads)
+    └─ v_image_summary_wide (pivoted materialized view)
 </code></pre></div>
+<blockquote>
+<p><strong>Backend:</strong> sensVeridian runs on <strong>PostgreSQL</strong> (DuckDB has been fully
+removed). A synchronous <code>PgStore</code> (psycopg) drives the <code>Orchestrator</code>/worker
+and an async <code>AsyncPgStore</code> (asyncpg) serves the API — both over the same
+<code>schema_pg.sql</code>.</p>
+</blockquote>
 <h2 id="storage-tiers">Storage Tiers</h2>
 <table>
 <thead>
@@ -1466,15 +1472,21 @@ DuckDB Store
 <tbody>
 <tr>
 <td><strong>Summary</strong></td>
-<td>DuckDB <code>predictions_summary</code></td>
+<td>PostgreSQL <code>predictions_summary</code></td>
 <td>Fast aggregates (present, count)</td>
 <td><code>SELECT model_id, present, count FROM predictions_summary</code></td>
 </tr>
 <tr>
 <td><strong>Raw</strong></td>
-<td>DuckDB <code>predictions_raw</code></td>
+<td>PostgreSQL <code>predictions_raw</code></td>
 <td>Full detections, embeddings, decoded text</td>
 <td><code>SELECT payload FROM predictions_raw WHERE model_id='fr'</code></td>
+</tr>
+<tr>
+<td><strong>Ground truth</strong></td>
+<td>PostgreSQL <code>gt_boxes</code> (+ per-dataset <code>mode</code>/<code>class_map</code>)</td>
+<td>Imported/curated labels; eval metrics in <code>eval_metrics</code></td>
+<td><code>SELECT cls, box FROM gt_boxes WHERE dataset_id='fd_eval'</code></td>
 </tr>
 <tr>
 <td><strong>Registry</strong></td>
