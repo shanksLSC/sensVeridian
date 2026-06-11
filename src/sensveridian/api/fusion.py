@@ -247,11 +247,17 @@ def fuse_detections(
             preds.append((f"{image_id}_{model_id}_{idx}", pred))
 
     detections: list[dict] = []
-    matched_gt: set[int] = set()
+    matched_any: set[int] = set()
+    # GT is matched independently PER MODEL: when two models run on one dataset,
+    # each should be scored against the full GT, so a box both models find is a
+    # match for both (not a false positive for the second). A GT box is a miss
+    # only when no model matched it.
+    matched_by_model: dict[str, set[int]] = {}
 
     for det_id, pred in preds:
         review = reviews.get(det_id)
         pred_box = pred.get("box")
+        model = pred.get("model", "")
 
         # 1) explicit human verdicts win
         if review and review.get("verdict") == "rejected":
@@ -263,17 +269,19 @@ def fuse_detections(
             detections.append(_detection(det_id, pred, gt_box, state))
             continue
 
-        # 2) match against the imported GT layer
+        # 2) match against the imported GT layer (per-model consumption)
         if has_gt_layer:
+            used = matched_by_model.setdefault(model, set())
             best_j, best_iou = -1, 0.0
             for j, g in enumerate(gt_items):
-                if j in matched_gt:
+                if j in used:
                     continue
                 v = iou_xywh(g.get("box"), pred_box)
                 if v > best_iou:
                     best_iou, best_j = v, j
             if best_j >= 0 and best_iou >= iou_thr:
-                matched_gt.add(best_j)
+                used.add(best_j)
+                matched_any.add(best_j)
                 g = gt_items[best_j]
                 same_cls = g.get("cls") in (None, pred.get("cls"))
                 same_id = _identity_matches(g, pred)
@@ -287,10 +295,10 @@ def fuse_detections(
         #    not-yet-reviewed both render as a match the human can later reject).
         detections.append(_detection(det_id, pred, pred_box, "match"))
 
-    # 4) any GT box no prediction matched is a false negative (miss)
+    # 4) any GT box no model matched is a false negative (miss)
     if has_gt_layer:
         for j, g in enumerate(gt_items):
-            if j in matched_gt:
+            if j in matched_any:
                 continue
             miss = {"model": g.get("model", ""), "cls": g.get("cls", "object"), "box": None, "conf": 0.0}
             if g.get("identity"):

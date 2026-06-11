@@ -83,7 +83,7 @@ SEED_MODELS: list[dict] = [
         "runner_kind": "squeezedet_qr",
         "weights_path": f"{_QR_CFG_ROOT}/real_world_for_tight_bbox_4:3/convert/qr-detection-model-4_3-grayscaled-v8.2.h5",
         "config_path": f"{_QR_CFG_ROOT}/real_world_for_tight_bbox_4:3.yaml",
-        "input_spec": "192x256x1",
+        "input_spec": "256x192x1",   # W x H x C
         "n_classes": 1,
     },
     {
@@ -93,7 +93,7 @@ SEED_MODELS: list[dict] = [
         "runner_kind": "squeezedet_qr",
         "weights_path": f"{_QR_CFG_ROOT}/qr_code_4_3_RGB/convert/model-sensai-h5-best.h5",
         "config_path": f"{_QR_CFG_ROOT}/qr_code_4_3_RGB.yaml",
-        "input_spec": "192x256x3",
+        "input_spec": "256x192x3",   # W x H x C
         "n_classes": 1,
     },
 ]

@@ -100,7 +100,10 @@ class FakeStore:
         return [{"id": "amod", "display_name": "AutomotiveMultiObjectDetection", "short": "AMOD",
                  "input": "320×320×3", "weights_path": "/w/amod.h5", "classes": 6, "depends_on": None,
                  "versions": [{"version": "8.2.0", "weights_sha": "abc", "date": "2026-04-19",
-                               "metrics": {"mAP": 0.91}, "notes": "current", "current": True}]}]
+                               # non-float values (per-class dict, run_id str) mirrored from
+                               # eval_metrics must NOT 500 the /models response
+                               "metrics": {"mAP": 0.91, "per_class_ap50": {"car": 0.9}, "run_id": "baseline"},
+                               "notes": "current", "current": True}]}]
 
     async def regressions(self, model_id, base, candidate):
         return []

@@ -72,7 +72,9 @@ class ModelVersion(BaseModel):
     version: str
     weights_sha: str
     date: str
-    metrics: dict[str, float]
+    # metrics may carry non-float context (per-class AP dicts, dataset_id/run_id
+    # mirrored from eval_metrics), so accept any JSON value rather than float.
+    metrics: dict[str, Any] = {}
     notes: str = ""
     current: bool = False
 

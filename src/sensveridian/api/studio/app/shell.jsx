@@ -190,12 +190,32 @@ function App() {
       <div data-ver={dataVer} style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
         {!immersive && <Sidebar />}
         <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg-0)" }}>
-          <Screen key={route.name + (route.datasetId || "") + (route.imageId || "")} />
+          <ScreenBoundary key={route.name + (route.datasetId || "") + (route.imageId || "")}>
+            <Screen />
+          </ScreenBoundary>
         </main>
       </div>
       <window.VeridianTweaks t={t} setTweak={setTweak} />
     </VDCtx.Provider>
   );
+}
+
+// Catch render errors in a screen and show them instead of blanking the app.
+class ScreenBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { err: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err, info) { console.error("[veridian] screen render error", err, info); }
+  render() {
+    if (!this.state.err) return this.props.children;
+    const e = this.state.err;
+    return (
+      <div className="scroll" style={{ padding: 24, color: "var(--tx-0)" }}>
+        <div style={{ fontWeight: 700, color: "var(--conflict)", marginBottom: 8, fontSize: 14 }}>This screen hit an error.</div>
+        <pre className="mono" style={{ fontSize: 11.5, whiteSpace: "pre-wrap", color: "var(--tx-1)", background: "var(--bg-1)", border: "1px solid var(--line)", borderRadius: 8, padding: 12, maxHeight: "60vh", overflow: "auto" }}>{String((e && e.stack) || e)}</pre>
+        <button className="btn" style={{ marginTop: 12 }} onClick={() => location.reload()}>Reload</button>
+      </div>
+    );
+  }
 }
 
 Object.assign(window, { App, VDCtx });

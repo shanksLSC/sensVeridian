@@ -98,14 +98,14 @@ MODEL_CARDS: dict[str, dict] = {
     "qr_gray": {
         "display_name": "QRCodeDetection (grayscale 4:3)",
         "short": "QR-G",
-        "input": "192×256×1",
+        "input": "256×192×1",
         "version": "8.2",
         "depends_on": None,
     },
     "qr_rgb": {
         "display_name": "QRCodeDetection (RGB 4:3)",
         "short": "QR-RGB",
-        "input": "192×256×3",
+        "input": "256×192×3",
         "version": "best",
         "depends_on": None,
     },
