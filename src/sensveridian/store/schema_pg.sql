@@ -30,7 +30,9 @@ CREATE TABLE IF NOT EXISTS models (
   weights_sha  TEXT,
   input_spec   TEXT,                            -- e.g. '320x320x3'
   n_classes    INTEGER,
-  depends_on   TEXT                             -- e.g. fr depends_on 'fd'
+  depends_on   TEXT,                            -- e.g. fr depends_on 'fd'
+  runner_kind  TEXT,                            -- runner factory key (e.g. 'squeezedet_qr', 'amod')
+  config_path  TEXT                             -- optional model config (SqueezeDet anchors/image_size)
 );
 
 CREATE TABLE IF NOT EXISTS runs (
@@ -113,6 +115,8 @@ ALTER TABLE datasets ADD COLUMN IF NOT EXISTS label_format TEXT;
 ALTER TABLE datasets ADD COLUMN IF NOT EXISTS labels_dir   TEXT;
 ALTER TABLE datasets ADD COLUMN IF NOT EXISTS class_names  JSONB;
 ALTER TABLE datasets ADD COLUMN IF NOT EXISTS class_map    JSONB;
+ALTER TABLE models   ADD COLUMN IF NOT EXISTS runner_kind  TEXT;
+ALTER TABLE models   ADD COLUMN IF NOT EXISTS config_path  TEXT;
 
 -- Predicted-vs-GT evaluation metrics (Path 2), per dataset+model+run.
 CREATE TABLE IF NOT EXISTS eval_metrics (

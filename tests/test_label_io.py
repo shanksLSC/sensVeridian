@@ -64,3 +64,17 @@ def test_read_missing_label_returns_empty(tmp_path: Path):
     img = _make_yolo_dataset(tmp_path / "ds")
     (img.parent.parent / "labels" / "frame1.txt").unlink()
     assert label_io.read_image_labels(img, img.parent.parent / "labels", "yolo", {0: "face"}) == []
+
+
+def test_labels_dir_for_handles_named_variants(tmp_path: Path):
+    # extracted_images -> extracted_labels (the qr_som layout)
+    root = tmp_path / "ds"
+    (root / "extracted_images").mkdir(parents=True)
+    (root / "extracted_labels").mkdir(parents=True)
+    img = root / "extracted_images" / "a.png"
+    img.write_bytes(b"\x89PNG")
+    (root / "extracted_labels" / "a.txt").write_text("0 0.5 0.5 0.2 0.2\n", encoding="utf-8")
+    ld = label_io.labels_dir_for(img)
+    assert ld is not None and ld.name == "extracted_labels"
+    anns = label_io.read_image_labels(img, ld, "yolo", {0: "qr"})
+    assert anns and anns[0]["cls"] == "qr"

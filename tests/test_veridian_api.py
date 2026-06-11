@@ -108,6 +108,10 @@ class FakeStore:
     async def promote_version(self, model_id, version):
         return None
 
+    async def register_model(self, **kwargs):
+        self.registered_models = getattr(self, "registered_models", [])
+        self.registered_models.append(kwargs)
+
     async def resolve_dataset_id(self, target_id):
         return "street_scenes"
 
@@ -197,6 +201,27 @@ def test_get_image_and_predictions(client):
     assert img["objects"][0]["state"] == "match"
     r2 = client.get("/api/v1/datasets/street_scenes/images/sha0/predictions?run_id=baseline&model_id=amod")
     assert r2.status_code == 200 and r2.json()[0]["cls"] == "car"
+
+
+def test_register_model(client, store, tmp_path):
+    wp = tmp_path / "qr.h5"
+    wp.write_bytes(b"\x00")  # existence is what the endpoint validates
+    cfg = tmp_path / "qr.yaml"
+    cfg.write_text("image_size: [192,256,3]\n")
+    r = client.post("/api/v1/models", json={
+        "model_id": "qr_rgb", "display_name": "QR RGB", "weights_path": str(wp),
+        "config_path": str(cfg), "runner_kind": "squeezedet_qr", "input_spec": "192x256x3", "version": "best",
+    })
+    assert r.status_code == 200, r.text
+    assert r.json()["model"] == "qr_rgb"
+    assert store.registered_models[0]["model_id"] == "qr_rgb"
+
+
+def test_register_model_rejects_bad_id_and_missing_weights(client):
+    r1 = client.post("/api/v1/models", json={"model_id": "Bad ID", "display_name": "x", "weights_path": "/nope.h5"})
+    assert r1.status_code == 400
+    r2 = client.post("/api/v1/models", json={"model_id": "ok_id", "display_name": "x", "weights_path": "/does/not/exist.h5"})
+    assert r2.status_code == 400
 
 
 def test_models_and_promote(client):

@@ -13,6 +13,7 @@ YOLO (the layout the datasets use).
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -23,14 +24,25 @@ YOLO_EXT = ".txt"
 
 # ---- discovery -------------------------------------------------------------
 def labels_dir_for(image_path: Path) -> Optional[Path]:
-    """Locate the YOLO labels directory for an image. Replaces an ``images``
-    path component with ``labels`` (the standard layout); falls back to a
-    sibling ``labels/`` directory."""
-    parts = list(Path(image_path).parts)
+    """Locate the YOLO labels directory for an image. Maps the nearest path
+    component containing ``images`` to its ``labels`` variant — handles both the
+    standard ``images/`` layout and named variants like
+    ``extracted_images`` -> ``extracted_labels``. Falls back to a sibling
+    ``labels/`` directory."""
+    p = Path(image_path)
+    parts = list(p.parts)
+    first: Optional[Path] = None
     for i in range(len(parts) - 1, -1, -1):
-        if parts[i].lower() == "images":
-            return Path(*parts[:i], "labels", *parts[i + 1:-1])
-    sibling = Path(image_path).parent.parent / "labels"
+        if "images" in parts[i].lower():
+            repl = re.sub("images", "labels", parts[i], flags=re.IGNORECASE)
+            cand = Path(*parts[:i], repl, *parts[i + 1:-1])
+            if first is None:
+                first = cand          # remember the nearest computed candidate
+            if cand.exists():
+                return cand           # prefer one that actually exists
+    if first is not None:
+        return first                  # caller (detect_labels) re-checks existence
+    sibling = p.parent.parent / "labels"
     return sibling if sibling.exists() else None
 
 
