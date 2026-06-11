@@ -61,5 +61,39 @@ class Settings:
     # optional bearer token; when set, requests must present it (see deps.py)
     auth_token: str | None = os.getenv("VERIDIAN_AUTH_TOKEN") or None
 
+    # the qr-detection-bboxes project's sources dir (its model.py decode is
+    # imported at runtime by the SqueezeDet QR runner)
+    qr_detection_sources: str = os.getenv(
+        "QR_DETECTION_SOURCES", "/data3/ssharma8/projects/qr-detection-bboxes/sources"
+    )
+
 
 settings = Settings()
+
+# Models seeded at API startup (see AsyncPgStore.seed_models). Per the QR-only
+# configuration this is just the two SqueezeDet QR detectors; each carries a
+# runner_kind + config_path so the orchestrator can build a weights-driven
+# runner. Add more via POST /models ("Register weights").
+_QR_CFG_ROOT = "/data3/ssharma8/projects/qr-detection-bboxes/configs"
+SEED_MODELS: list[dict] = [
+    {
+        "model_id": "qr_gray",
+        "display_name": "QRCodeDetection (grayscale 4:3)",
+        "version": "8.2",
+        "runner_kind": "squeezedet_qr",
+        "weights_path": f"{_QR_CFG_ROOT}/real_world_for_tight_bbox_4:3/convert/qr-detection-model-4_3-grayscaled-v8.2.h5",
+        "config_path": f"{_QR_CFG_ROOT}/real_world_for_tight_bbox_4:3.yaml",
+        "input_spec": "256x192x1",   # W x H x C
+        "n_classes": 1,
+    },
+    {
+        "model_id": "qr_rgb",
+        "display_name": "QRCodeDetection (RGB 4:3)",
+        "version": "best",
+        "runner_kind": "squeezedet_qr",
+        "weights_path": f"{_QR_CFG_ROOT}/qr_code_4_3_RGB/convert/model-sensai-h5-best.h5",
+        "config_path": f"{_QR_CFG_ROOT}/qr_code_4_3_RGB.yaml",
+        "input_spec": "256x192x3",   # W x H x C
+        "n_classes": 1,
+    },
+]

@@ -100,13 +100,20 @@ class FakeStore:
         return [{"id": "amod", "display_name": "AutomotiveMultiObjectDetection", "short": "AMOD",
                  "input": "320×320×3", "weights_path": "/w/amod.h5", "classes": 6, "depends_on": None,
                  "versions": [{"version": "8.2.0", "weights_sha": "abc", "date": "2026-04-19",
-                               "metrics": {"mAP": 0.91}, "notes": "current", "current": True}]}]
+                               # non-float values (per-class dict, run_id str) mirrored from
+                               # eval_metrics must NOT 500 the /models response
+                               "metrics": {"mAP": 0.91, "per_class_ap50": {"car": 0.9}, "run_id": "baseline"},
+                               "notes": "current", "current": True}]}]
 
     async def regressions(self, model_id, base, candidate):
         return []
 
     async def promote_version(self, model_id, version):
         return None
+
+    async def register_model(self, **kwargs):
+        self.registered_models = getattr(self, "registered_models", [])
+        self.registered_models.append(kwargs)
 
     async def resolve_dataset_id(self, target_id):
         return "street_scenes"
@@ -197,6 +204,27 @@ def test_get_image_and_predictions(client):
     assert img["objects"][0]["state"] == "match"
     r2 = client.get("/api/v1/datasets/street_scenes/images/sha0/predictions?run_id=baseline&model_id=amod")
     assert r2.status_code == 200 and r2.json()[0]["cls"] == "car"
+
+
+def test_register_model(client, store, tmp_path):
+    wp = tmp_path / "qr.h5"
+    wp.write_bytes(b"\x00")  # existence is what the endpoint validates
+    cfg = tmp_path / "qr.yaml"
+    cfg.write_text("image_size: [192,256,3]\n")
+    r = client.post("/api/v1/models", json={
+        "model_id": "qr_rgb", "display_name": "QR RGB", "weights_path": str(wp),
+        "config_path": str(cfg), "runner_kind": "squeezedet_qr", "input_spec": "192x256x3", "version": "best",
+    })
+    assert r.status_code == 200, r.text
+    assert r.json()["model"] == "qr_rgb"
+    assert store.registered_models[0]["model_id"] == "qr_rgb"
+
+
+def test_register_model_rejects_bad_id_and_missing_weights(client):
+    r1 = client.post("/api/v1/models", json={"model_id": "Bad ID", "display_name": "x", "weights_path": "/nope.h5"})
+    assert r1.status_code == 400
+    r2 = client.post("/api/v1/models", json={"model_id": "ok_id", "display_name": "x", "weights_path": "/does/not/exist.h5"})
+    assert r2.status_code == 400
 
 
 def test_models_and_promote(client):

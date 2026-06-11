@@ -56,6 +56,7 @@
       return d && d.clips ? d.clips.find((c) => c.id === clipId) || null : null;
     },
     async listModels() { await sleep(cfg().latencyMs); return window.VD.models; },
+    async registerModel(spec) { await sleep(cfg().latencyMs); return { ok: true, model: spec.model_id }; },
     /** predictions for one image, optionally narrowed to a run/model (layer). */
     async getPredictions(datasetId, imageId /*, runId, modelId */) {
       await sleep(cfg().latencyMs);
@@ -136,6 +137,7 @@
     async getImage(datasetId, imageId) { return this._get(`/datasets/${datasetId}/images/${imageId}`); },
     async getClip(datasetId, clipId) { return this._get(`/datasets/${datasetId}/clips/${clipId}`); },
     async listModels() { return this._get("/models"); },
+    async registerModel(spec) { return this._send("POST", "/models", spec); },
     async getPredictions(datasetId, imageId, runId, modelId) {
       const q = new URLSearchParams({ ...(runId ? { run_id: runId } : {}), ...(modelId ? { model_id: modelId } : {}) });
       return this._get(`/datasets/${datasetId}/images/${imageId}/predictions?${q}`);

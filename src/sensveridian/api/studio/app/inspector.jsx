@@ -156,7 +156,7 @@ function Inspector({ image, objects, selObj, selectedId, onSelect, onHover, revi
             const m = window.VD.models.find((x) => x.id === id); const on = t.models[id] !== false;
             return (
               <button key={id} onClick={() => toggleModel(id)} className="chip" style={{ cursor: "pointer", borderColor: on ? vhelp.modelColor(id) : "var(--line)", background: on ? "var(--bg-2)" : "transparent", opacity: on ? 1 : 0.5 }}>
-                <span className="dot" style={{ background: vhelp.modelColor(id) }} />{m.short}
+                <span className="dot" style={{ background: vhelp.modelColor(id) }} />{m ? m.short : id}
                 <Icon name={on ? "eye" : "eyeOff"} size={11} style={{ color: "var(--tx-2)" }} />
               </button>
             );

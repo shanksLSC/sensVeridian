@@ -28,13 +28,25 @@ function ModelsScreen() {
 
   const vA = vlist.find((v) => v.version === a) || vlist[1] || vlist[0];
   const vB = vlist.find((v) => v.version === b) || vlist[0];
+  const [registering, setRegistering] = React.useState(false);
+  const [, forceModels] = React.useReducer((x) => x + 1, 0);
+
+  // Pull fresh models into the synchronous VD cache after a registration.
+  const refreshModels = async () => {
+    try {
+      const fresh = await window.VeridianAPI.listModels();
+      if (Array.isArray(fresh)) { window.VD.models.length = 0; fresh.forEach((mm) => window.VD.models.push(mm)); }
+    } catch (e) { console.warn("[veridian] refresh models failed", e); }
+    forceModels();
+  };
 
   return (
     <>
       <TopBar crumbs={[{ label: "Models & Versions" }]}>
         <span className="chip" style={{ borderColor: "var(--line-2)" }}><Icon name="database" size={12} style={{ color: "var(--match)" }} />synced from {window.VD.storage.engine}</span>
-        <button className="btn"><Icon name="plus" size={15} />Register weights</button>
+        <button className="btn" onClick={() => setRegistering(true)}><Icon name="plus" size={15} />Register weights</button>
       </TopBar>
+      {registering && <RegisterModal onClose={() => setRegistering(false)} onDone={async () => { await refreshModels(); setRegistering(false); }} />}
 
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         {/* model list */}
@@ -185,6 +197,77 @@ function VersionNode({ v, first, isA, isB, onA, onB }) {
             <button className="btn sm" style={{ padding: "3px 9px", background: isA ? "var(--tx-2)" : "var(--bg-3)", color: isA ? "#07090d" : "var(--tx-1)", fontWeight: 700 }} onClick={onA}>A</button>
             <button className="btn sm" style={{ padding: "3px 9px", background: isB ? "var(--accent)" : "var(--bg-3)", color: isB ? "#07090d" : "var(--tx-1)", fontWeight: 700 }} onClick={onB}>B</button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RegisterModal({ onClose, onDone }) {
+  const [f, setF] = React.useState({
+    model_id: "", display_name: "", weights_path: "", config_path: "",
+    runner_kind: "squeezedet_qr", input_spec: "", version: "1",
+  });
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState(null);
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+  const valid = /^[a-z0-9_]+$/.test(f.model_id) && f.display_name.trim() && f.weights_path.trim();
+
+  const submit = async () => {
+    setBusy(true); setErr(null);
+    try {
+      await window.VeridianAPI.registerModel({
+        model_id: f.model_id.trim(), display_name: f.display_name.trim(),
+        weights_path: f.weights_path.trim(), config_path: f.config_path.trim() || null,
+        runner_kind: f.runner_kind || null, input_spec: f.input_spec.trim(), version: f.version.trim() || "1",
+        n_classes: 1,
+      });
+      await onDone();
+    } catch (e) {
+      setErr(String(e && e.message ? e.message : e));
+      setBusy(false);
+    }
+  };
+
+  const field = (label, key, ph) => (
+    <label style={{ display: "block", marginBottom: 10 }}>
+      <div style={{ fontSize: 11, color: "var(--tx-2)", marginBottom: 4 }}>{label}</div>
+      <input value={f[key]} onChange={set(key)} placeholder={ph} className="mono"
+        style={{ width: "100%", background: "var(--bg-3)", border: "1px solid var(--line-2)", borderRadius: 6, color: "var(--tx-0)", padding: "7px 9px", fontSize: 12 }} />
+    </label>
+  );
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(5,7,11,.66)", display: "grid", placeItems: "center", zIndex: 50 }}>
+      <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: 540, maxWidth: "92vw", padding: 20, maxHeight: "90vh", overflow: "auto" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <Icon name="cpu" size={17} style={{ color: "var(--accent-2)" }} />
+          <span style={{ fontWeight: 700, fontSize: 15 }}>Register weights</span>
+          <div style={{ flex: 1 }} />
+          <button className="btn ghost icon" onClick={onClose}><Icon name="x" size={15} /></button>
+        </div>
+        {field("Model id (lowercase, digits, underscore)", "model_id", "qr_rgb")}
+        {field("Display name", "display_name", "QRCodeDetection (RGB 4:3)")}
+        {field("Weights path (.h5)", "weights_path", "/data3/.../model.h5")}
+        {field("Config path (SqueezeDet YAML, optional)", "config_path", "/data3/.../config.yaml")}
+        <label style={{ display: "block", marginBottom: 10 }}>
+          <div style={{ fontSize: 11, color: "var(--tx-2)", marginBottom: 4 }}>Runner kind</div>
+          <select value={f.runner_kind} onChange={set("runner_kind")}
+            style={{ width: "100%", background: "var(--bg-3)", border: "1px solid var(--line-2)", borderRadius: 6, color: "var(--tx-0)", padding: "7px 9px", fontSize: 12 }}>
+            {["squeezedet_qr", "amod", "qrcode", "fd", "fr"].map((k) => <option key={k} value={k}>{k}</option>)}
+          </select>
+        </label>
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 1 }}>{field("Input spec", "input_spec", "192x256x3")}</div>
+          <div style={{ flex: 1 }}>{field("Version", "version", "best")}</div>
+        </div>
+        {err && <div style={{ color: "var(--conflict)", fontSize: 12, marginBottom: 10 }}><Icon name="alert" size={13} /> {err}</div>}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+          <button className="btn" onClick={onClose}>Cancel</button>
+          <button className="btn primary" disabled={!valid || busy} onClick={submit}
+            style={{ opacity: (!valid || busy) ? 0.5 : 1, cursor: (!valid || busy) ? "not-allowed" : "pointer" }}>
+            <Icon name="check" size={14} />{busy ? "Registering…" : "Register"}
+          </button>
         </div>
       </div>
     </div>

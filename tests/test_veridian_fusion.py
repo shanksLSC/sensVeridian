@@ -92,6 +92,20 @@ def test_fuse_with_gt_match_mismatch_fp_miss():
     assert miss["pred"] is None and miss["gt"] == [0.05, 0.05, 0.05, 0.05]
 
 
+def test_fuse_two_models_one_gt_both_match():
+    # two models detect the same QR; each is scored against GT independently, so
+    # both are matches (not one match + one false positive), and no miss.
+    preds = {
+        "qr_gray": {"detections": [{"bbox": [0.10, 0.10, 0.60, 0.60], "conf": 0.95, "class_id": 0}]},
+        "qr_rgb": {"detections": [{"bbox": [0.11, 0.11, 0.61, 0.61], "conf": 0.94, "class_id": 0}]},
+    }
+    gt = [{"cls": "qr", "box": [0.10, 0.10, 0.50, 0.50]}]
+    dets = fusion.fuse_detections("im", preds, 100, 100, gt_items=gt)
+    states = sorted(d["state"] for d in dets)
+    assert states == ["match", "match"]
+    assert not any(d["state"] in ("fp", "miss") for d in dets)
+
+
 def test_fuse_mismatch_on_class_disagreement():
     preds = {"amod": {"detections": [{"bbox": [0.30, 0.40, 0.50, 0.60], "conf": 0.9, "class_id": 0}]}}  # car
     gt_items = [{"cls": "truck", "box": [0.30, 0.40, 0.20, 0.20]}]  # overlaps but wrong class

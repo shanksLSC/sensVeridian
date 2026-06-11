@@ -26,8 +26,9 @@ AMOD_CLASSES: list[str] = [
 # AED: acoustic event vocabulary (mirrors design_reference AUDIO_LABELS).
 AED_LABELS: list[str] = ["speech", "music", "siren", "alarm", "keyword", "noise", "silence"]
 
-# Single-class detectors map their detections to one label.
-_SINGLE_CLASS = {"qrcode": "qr", "fd": "face", "fr": "face"}
+# Single-class detectors map their detections to one label. The SqueezeDet QR
+# detectors (qr_gray / qr_rgb, runner_kind 'squeezedet_qr') also emit class 'qr'.
+_SINGLE_CLASS = {"qrcode": "qr", "fd": "face", "fr": "face", "qr_gray": "qr", "qr_rgb": "qr"}
 
 
 def class_name(model_id: str, class_id: int = 0) -> str:
@@ -50,6 +51,8 @@ def n_classes(model_id: str) -> int:
         "fd": 1,
         "fr": 1,
         "aed": len(AED_LABELS),
+        "qr_gray": 1,
+        "qr_rgb": 1,
     }.get(model_id, 0)
 
 
@@ -90,6 +93,20 @@ MODEL_CARDS: dict[str, dict] = {
         "short": "AED",
         "input": "16kHz mono",
         "version": "0.1.0",
+        "depends_on": None,
+    },
+    "qr_gray": {
+        "display_name": "QRCodeDetection (grayscale 4:3)",
+        "short": "QR-G",
+        "input": "256×192×1",
+        "version": "8.2",
+        "depends_on": None,
+    },
+    "qr_rgb": {
+        "display_name": "QRCodeDetection (RGB 4:3)",
+        "short": "QR-RGB",
+        "input": "256×192×3",
+        "version": "best",
         "depends_on": None,
     },
 }

@@ -318,20 +318,29 @@ class AsyncPgStore:
             if d["kind"] == "audio":
                 continue
             run_id = d["run_id"] or "baseline"
+            # a detection (or whole frame) that already carries a verdict has been
+            # triaged -> it must not reappear in the queue
+            reviews = await self._reviews_for_dataset(d["dataset_id"])
             imgs = await self.s.execute(
                 text("SELECT image_id FROM images WHERE dataset_id = :d ORDER BY ingested_at LIMIT 500"),
                 {"d": d["dataset_id"]},
             )
             for r in imgs.mappings().all():
+                frame_rev = reviews.get(f"img:{r['image_id']}")
+                if frame_rev and frame_rev.get("verdict") in ("accepted", "verified", "flagged"):
+                    continue  # frame fully triaged
                 dets = await self.build_image_detections(d["dataset_id"], r["image_id"], run_id)
                 for o in dets:
-                    if o.get("state") != "match":
-                        rows.append({
-                            "datasetId": d["dataset_id"], "datasetName": d["name"],
-                            "imageId": r["image_id"], "cls": o.get("cls"),
-                            "state": o.get("state"), "conf": float(o.get("conf") or 0.0),
-                            "iou": float(o.get("iou") or 0.0), "detId": o.get("id"),
-                        })
+                    if o.get("state") == "match":
+                        continue
+                    if reviews.get(o.get("id")):
+                        continue  # this detection was already accepted/rejected/edited/flagged
+                    rows.append({
+                        "datasetId": d["dataset_id"], "datasetName": d["name"],
+                        "imageId": r["image_id"], "cls": o.get("cls"),
+                        "state": o.get("state"), "conf": float(o.get("conf") or 0.0),
+                        "iou": float(o.get("iou") or 0.0), "detId": o.get("id"),
+                    })
                 if len(rows) >= limit * 3:
                     break
         rows.sort(key=lambda x: x["conf"])
@@ -847,45 +856,52 @@ class AsyncPgStore:
 
     # ---- seeding -----------------------------------------------------------
     async def seed_models(self) -> None:
-        """Seed the models + a current model_versions row from the static model
-        cards + sensveridian.config.MODELS, so /models and the ingest model
-        picker work before any ingest. Idempotent."""
-        from ..api import classmaps as cm
-        from ..config import MODELS
+        """Seed the registry from ``api.config.SEED_MODELS`` (the two SqueezeDet
+        QR detectors) + a current model_versions row, so /models and the ingest
+        picker work before any ingest. Idempotent. Add more via POST /models."""
+        from ..api.config import SEED_MODELS
 
-        weights = {
-            "amod": str(MODELS.amod),
-            "qrcode": str(MODELS.qrcode),
-            "fd": str(MODELS.fd),
-            "fr": str(MODELS.fr),
-            "aed": "",
-        }
-        for mid in ("amod", "qrcode", "fd", "fr", "aed"):
-            card = cm.model_card(mid)
-            await self.s.execute(
-                text(
-                    """
-                    INSERT INTO models (model_id, display_name, version, weights_path, weights_sha, input_spec, n_classes, depends_on)
-                    VALUES (:m, :d, :v, :p, '', :ispec, :nc, :dep)
-                    ON CONFLICT (model_id) DO UPDATE
-                    SET display_name = excluded.display_name, version = excluded.version,
-                        weights_path = excluded.weights_path, input_spec = excluded.input_spec,
-                        n_classes = excluded.n_classes, depends_on = excluded.depends_on
-                    """
-                ),
-                {"m": mid, "d": card["display_name"], "v": card["version"], "p": weights[mid],
-                 "ispec": card["input"], "nc": card["classes"], "dep": card["depends_on"]},
+        for m in SEED_MODELS:
+            await self.register_model(
+                model_id=m["model_id"], display_name=m["display_name"],
+                weights_path=m["weights_path"], config_path=m.get("config_path"),
+                runner_kind=m.get("runner_kind"), input_spec=m.get("input_spec", ""),
+                version=m.get("version", "1"), n_classes=int(m.get("n_classes", 1)),
             )
-            await self.s.execute(
-                text(
-                    """
-                    INSERT INTO model_versions (model_id, version, weights_sha, metrics, notes, is_current)
-                    VALUES (:m, :v, '', '{}'::jsonb, 'seeded', true)
-                    ON CONFLICT (model_id, version) DO NOTHING
-                    """
-                ),
-                {"m": mid, "v": card["version"]},
-            )
+
+    async def register_model(self, model_id: str, display_name: str, weights_path: str,
+                             config_path: Optional[str] = None, runner_kind: Optional[str] = None,
+                             input_spec: str = "", version: str = "1",
+                             n_classes: int = 1, depends_on: Optional[str] = None) -> None:
+        """Upsert a model + a current model_versions row (the 'Register weights'
+        path). Commits."""
+        await self.s.execute(
+            text(
+                """
+                INSERT INTO models (model_id, display_name, version, weights_path, weights_sha,
+                                    input_spec, n_classes, depends_on, runner_kind, config_path)
+                VALUES (:m, :d, :v, :p, '', :ispec, :nc, :dep, :rk, :cfg)
+                ON CONFLICT (model_id) DO UPDATE
+                SET display_name = excluded.display_name, version = excluded.version,
+                    weights_path = excluded.weights_path, input_spec = excluded.input_spec,
+                    n_classes = excluded.n_classes, depends_on = excluded.depends_on,
+                    runner_kind = excluded.runner_kind, config_path = excluded.config_path
+                """
+            ),
+            {"m": model_id, "d": display_name, "v": version, "p": weights_path,
+             "ispec": input_spec, "nc": n_classes, "dep": depends_on,
+             "rk": runner_kind, "cfg": config_path},
+        )
+        await self.s.execute(
+            text(
+                """
+                INSERT INTO model_versions (model_id, version, weights_sha, metrics, notes, is_current)
+                VALUES (:m, :v, '', '{}'::jsonb, 'registered', true)
+                ON CONFLICT (model_id, version) DO NOTHING
+                """
+            ),
+            {"m": model_id, "v": version},
+        )
         await self.s.commit()
 
     # ---- helpers -----------------------------------------------------------

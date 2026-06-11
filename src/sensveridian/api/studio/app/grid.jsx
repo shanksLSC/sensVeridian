@@ -7,7 +7,7 @@ function MiniOverlay({ image }) {
   // small pred/gt box overlay for thumbnails
   return (
     <svg viewBox="0 0 1 0.625" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-      {image.objects.map((o, i) => {
+      {(image.objects || []).map((o, i) => {
         const conflict = o.state !== "match";
         const b = o.gt || o.pred;
         if (!b) return null;
@@ -197,8 +197,9 @@ function QueueScreen() {
   // Local aggregation (mock / fallback): conflicts across already-loaded datasets.
   const localRows = () => {
     const out = [];
+    const reviews = ctx.reviews || {};
     window.VD.datasets.forEach((d) => (d.images || []).forEach((im) => (im.objects || []).forEach((o) => {
-      if (o.state !== "match") out.push({ d, im, o });
+      if (o.state !== "match" && !reviews[o.id]) out.push({ d, im, o });
     })));
     return out;
   };
@@ -211,7 +212,7 @@ function QueueScreen() {
           if (!alive || !data) return;  // null -> keep local fallback (mock)
           setRows(data.map((r) => ({
             d: window.VD.getDataset(r.datasetId) || { id: r.datasetId, name: r.datasetName || r.datasetId },
-            im: { id: r.imageId, datasetId: r.datasetId, src: `/api/v1/datasets/${r.datasetId}/images/${r.imageId}/raw` },
+            im: { id: r.imageId, datasetId: r.datasetId, objects: [], src: `/api/v1/datasets/${r.datasetId}/images/${r.imageId}/raw` },
             o: { id: r.detId, cls: r.cls, state: r.state, conf: r.conf || 0, iou: r.iou || 0 },
           })));
         })

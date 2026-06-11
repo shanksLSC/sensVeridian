@@ -47,20 +47,82 @@ class Orchestrator:
         self.store = store
         self.registry = registry
         self.conf_threshold = conf_threshold
-        self.runners = {
-            "amod": AMODRunner(str(MODELS.amod)),
-            "qrcode": QRCodeRunner(str(MODELS.qrcode)),
-            "fd": FaceDetectionRunner(str(MODELS.fd)),
-            "fr": FaceRecognitionRunner(str(MODELS.fr), registry=registry, threshold=SETTINGS.face_match_threshold),
-        }
+        # Build the runner registry from the DB model rows (weights-driven), so
+        # registered models (e.g. SqueezeDet QR detectors) are ingestable. Fall
+        # back to the legacy four when the table is empty / unavailable.
+        self.runners: dict = {}
+        for row in self._model_rows():
+            r = self._build_runner(row.get("model_id"), row.get("runner_kind"),
+                                   row.get("weights_path"), row.get("config_path"))
+            if r is not None:
+                self.runners[row["model_id"]] = r
+        if not self.runners:
+            self.runners = self._legacy_runners()
         if conf_threshold is not None:
             for runner in self.runners.values():
                 set_conf_threshold(runner, conf_threshold)
 
+    def _legacy_runners(self) -> dict:
+        return {
+            "amod": AMODRunner(str(MODELS.amod)),
+            "qrcode": QRCodeRunner(str(MODELS.qrcode)),
+            "fd": FaceDetectionRunner(str(MODELS.fd)),
+            "fr": FaceRecognitionRunner(str(MODELS.fr), registry=self.registry,
+                                        threshold=SETTINGS.face_match_threshold),
+        }
+
+    def _model_rows(self) -> list[dict]:
+        """Read (model_id, runner_kind, weights_path, config_path) from the store.
+        Returns [] when the table is empty or the columns are missing."""
+        try:
+            df = self.store.query_df(
+                "SELECT model_id, runner_kind, weights_path, config_path FROM models"
+            )
+        except Exception:
+            return []
+        return [
+            {k: (None if (v is None or (isinstance(v, float) and v != v)) else v) for k, v in rec.items()}
+            for rec in df.to_dict("records")
+        ]
+
+    def _build_runner(self, model_id, runner_kind, weights_path, config_path):
+        kind = (runner_kind or model_id or "").lower()
+        if kind == "squeezedet_qr":
+            from .runners.squeezedet_qr import SqueezeDetQRRunner
+            return SqueezeDetQRRunner(model_id, weights_path or "", config_path or "")
+        if kind == "amod":
+            return AMODRunner(weights_path or str(MODELS.amod))
+        if kind == "qrcode":
+            return QRCodeRunner(weights_path or str(MODELS.qrcode))
+        if kind == "fd":
+            return FaceDetectionRunner(weights_path or str(MODELS.fd))
+        if kind == "fr":
+            return FaceRecognitionRunner(weights_path or str(MODELS.fr), registry=self.registry,
+                                         threshold=SETTINGS.face_match_threshold)
+        return None
+
+    _CANON = {"amod": 0, "qrcode": 1, "fd": 2, "fr": 3}
+
     def _ordered_models(self, selected: set[str]) -> list[str]:
-        # Fixed topological order for current graph.
-        order = ["amod", "qrcode", "fd", "fr"]
-        return [m for m in order if m in selected]
+        """Topological order by each runner's depends_on, so a model runs after
+        any selected dependency (e.g. fr after fd). Independent models keep a
+        stable canonical order (legacy four first, then alphabetical). Unknown
+        ids are dropped."""
+        sel = sorted((m for m in selected if m in self.runners),
+                     key=lambda m: (self._CANON.get(m, 99), m))
+        ordered: list[str] = []
+        placed: set[str] = set()
+        remaining = list(sel)
+        while remaining:
+            progressed = False
+            for m in list(remaining):
+                deps = getattr(self.runners[m], "depends_on", ()) or ()
+                if all((d not in sel) or (d in placed) for d in deps):
+                    ordered.append(m); placed.add(m); remaining.remove(m); progressed = True
+            if not progressed:  # dependency cycle / unmet — append the rest as-is
+                ordered.extend(remaining)
+                break
+        return ordered
 
     def _iter_images(self, path: Path) -> Iterable[Path]:
         if path.is_file() and path.suffix.lower() in SUPPORTED_EXTS:
